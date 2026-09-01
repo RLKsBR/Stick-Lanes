@@ -256,5 +256,25 @@ $('#randomizeSimFactions').onclick=()=>{let pair=randomPair();$('#simF1').value=
 syncSimulationFactionMode();
 $('#runLab').onclick=run;
 $('#clearUnitBalance').onclick=()=>{if(confirm('Zerar somente o banco acumulado Frontline v3? O baseline antigo exportado não é afetado.')){localStorage.removeItem(DB_KEY);renderDatabase()}};
-$('#exportUnitBalance').onclick=()=>{let db=readJSON(DB_KEY,null);if(!db)return;let a=document.createElement('a'),blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download=`stick-lanes-frontline-v3-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+function setJSONStatus(text,kind='muted'){let el=$('#jsonStatus');if(!el)return;el.className=kind;el.textContent=text}
+async function exportBalanceJSON(){
+ let db=readJSON(DB_KEY,null),btn=$('#exportUnitBalance');
+ if(!db){setJSONStatus('Não existe banco para exportar. Rode pelo menos uma bateria primeiro.','warning');return}
+ let filename=`stick-lanes-frontline-v3-${new Date().toISOString().slice(0,10)}.json`,text=JSON.stringify(db,null,2),blob=new Blob([text],{type:'application/json'});btn.disabled=true;
+ try{
+  if(typeof File==='function'&&navigator.share&&navigator.canShare){
+   let file=new File([blob],filename,{type:'application/json'});
+   if(navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Banco de simulações do Stick Lanes'});setJSONStatus(`JSON preparado: ${filename}.`,'good');return}
+    catch(err){if(err?.name==='AbortError'){setJSONStatus('Compartilhamento cancelado. O banco continua salvo neste navegador.');return}}
+   }
+  }
+  let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  setJSONStatus(`Download iniciado: ${filename}. Procure na pasta Downloads.`,'good')
+ }catch(err){
+  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);setJSONStatus('O navegador bloqueou o arquivo, então o JSON foi copiado para a área de transferência.','warning');return}}catch{}
+  setJSONStatus('Não foi possível exportar neste navegador. Tente abrir a página no Chrome ou Firefox.','warning')
+ }finally{btn.disabled=false}
+}
+$('#exportUnitBalance').onclick=exportBalanceJSON;
 renderDatabase();renderHistory();
