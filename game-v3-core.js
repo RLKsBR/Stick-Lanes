@@ -7,7 +7,7 @@ var FACTIONS=Object.fromEntries(Object.entries(SL_FACTIONS).map(([k,v])=>[k,v.un
 var $=s=>document.querySelector(s);
 var setup=$('#setup'),gameUI=$('#gameUI'),f1=$('#f1'),f2=$('#f2'),pool=$('#pool'),count=$('#count'),
     start=$('#start'),canvas=$('#game'),ctx=canvas.getContext('2d');
-var chosen=[],loadout=[];
+var chosen=[],loadout=[],gameMode='pve';
 
 const VIEW_W=1800,VIEW_H=1000,WORLD_W=22500,BASE_Y=500,PX=26,MOVE_SCALE=18;
 const BASE_X={1:180,'-1':22320},LANE_Y=[245,500,755],MAIN_SPLIT_END=2100,MAIN_MERGE_START=20400;
@@ -25,7 +25,8 @@ let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,waveClock=0,waveIndex=0;
 let enemyFactions=[],sideFactions={1:[], '-1':[]};
 let unitSeq=0,showTowerRanges=false;
-const stance=['advance','advance','advance'],spawnCd={},enemySpawnCd={};
+const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
+const aiSpawnCd={1:{},'-1':{}},aiUse={1:{},'-1':{}},aiNextThink={1:0,'-1':0};
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -82,7 +83,7 @@ f1.onchange=f2.onchange=renderPool;renderPool();
 function byKey(k){let[fac,n]=k.split('|');return{fac,u:FACTIONS[fac].find(x=>x.name===n)}}
 start.onclick=()=>{
  if(chosen.length!==8)return;
- loadout=chosen.map(byKey);setup.hidden=true;gameUI.hidden=false;buildUI();reset();
+ loadout=chosen.map(byKey);gameMode=$('#gameMode')?.value||'pve';setup.hidden=true;gameUI.hidden=false;buildUI();reset();
 };
 $('#restart').onclick=()=>location.reload();
 
@@ -90,10 +91,10 @@ function buildUI(){
  let lc=$('#laneControls');lc.innerHTML='';
  ['Lane superior','Lane central','Lane inferior'].forEach((name,i)=>{
    let d=document.createElement('div');d.className='laneControl';
-   d.innerHTML=`<strong>${name}</strong><small class="muted">3 sub-lanes: tanque • lutador • distância</small><div class="laneBtns">${[
-     ['base','Base'],['behind','Atrás da torre'],['tower','Na torre'],['ahead','À frente'],['advance','Avançar']
+   d.innerHTML=`<strong>${name}</strong><small class="muted">Ordem atual da lane</small><div class="laneBtns">${[
+     ['base','Base'],['behind','Atrás da torre'],['ahead','À frente da torre'],['advance','Avançar'],['attack','Atacar']
    ].map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
-   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{stance[i]=b.dataset.v;d.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b))});
+   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{orders[1][i]=b.dataset.v;d.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b))});
    lc.appendChild(d)
  });
  let sb=$('#spawnbar');sb.innerHTML='';
@@ -102,6 +103,8 @@ function buildUI(){
    b.innerHTML=`<b>${u.name}</b><small>${fac} • ${u.cost} • ${u.gen}s</small>`;
    b.onclick=()=>spawnPlayer(i);sb.appendChild(b)
  });
+ let status=$('#modeStatus');if(status)status.textContent=gameMode==='robot'?'Robô × Robô':'Jogador × IA';
+ lc.classList.toggle('aiControlled',gameMode==='robot')
 }
 
 function setCamera(v){cameraX=clamp(v,0,WORLD_W-VIEW_W)}
@@ -126,9 +129,11 @@ canvas.addEventListener('pointerup',e=>{
 });
 
 function reset(){
- units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;waveClock=0;waveIndex=0;setCamera(0);
+ units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;waveClock=0;waveIndex=0;unitSeq=0;setCamera(0);
+ Object.keys(spawnCd).forEach(k=>delete spawnCd[k]);
+ for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0}
  makeStructures();
- enemyFactions=SL_FACTION_ORDER.sort(()=>Math.random()-.5).slice(0,2);
+ enemyFactions=[...SL_FACTION_ORDER].sort(()=>Math.random()-.5).slice(0,2);
  sideFactions={1:[f1.value,f2.value],'-1':enemyFactions};
  running=true;last=performance.now();requestAnimationFrame(loop)
 }
@@ -168,16 +173,38 @@ function spawnPlayer(i){
  gold-=u.cost;spawnCd[k]=now+u.gen;spawnUnit(1,selectedLane,fac,u)
 }
 function unitValue(u){let dps=u.atk/Math.max(.45,u.rate),ehp=u.hp*(1+u.def/130);return Math.sqrt(dps*ehp)*(1+u.range*.018)/(Math.pow(u.cost,0.55)*(1+u.gen/220))}
-function enemyAI(t){
- if(Math.random()>.018)return;
- let pool=enemyFactions.flatMap(f=>FACTIONS[f].map(u=>({fac:f,u}))).filter(({u})=>enemyGold>=u.cost&&t>=(enemySpawnCd[u.name]||0));
- if(!pool.length)return;
- pool.sort((a,b)=>unitValue(b.u)-unitValue(a.u)+(Math.random()-.5)*.08);
- let pick=pool[Math.floor(Math.random()*Math.min(5,pool.length))];
- if(pick.u.special.unique&&units.some(x=>!x.dead&&x.side===-1&&x.name===pick.u.name))return;
- enemyGold-=pick.u.cost;enemySpawnCd[pick.u.name]=t+pick.u.gen;
- let scores=[0,1,2].map(l=>units.filter(x=>!x.dead&&x.side===1&&x.lane===l).length-units.filter(x=>!x.dead&&x.side===-1&&x.lane===l).length);
- spawnUnit(-1,scores.indexOf(Math.max(...scores)),pick.fac,pick.u)
+function sideGold(side){return side===1?gold:enemyGold}
+function spendSideGold(side,n){if(side===1)gold-=n;else enemyGold-=n}
+function sideRoster(side){
+ return side===1?loadout:enemyFactions.flatMap(f=>FACTIONS[f].map(u=>({fac:f,u})))
+}
+function armyPower(side,lane){
+ return units.filter(u=>!u.dead&&u.side===side&&u.lane===lane).reduce((sum,u)=>sum+u.hp/u.maxHp*(u.atk/Math.max(.5,u.rate))*(u.minion?.55:1),0)
+}
+function updateAIOrders(side){
+ for(let lane=0;lane<3;lane++){
+   let own=armyPower(side,lane),foe=armyPower(-side,lane);
+   let wave=units.some(u=>!u.dead&&u.minion&&u.side===side&&u.lane===lane);
+   orders[side][lane]=wave&&own>=foe*.72?'advance':own>foe*1.45?'attack':foe>own*1.3?'behind':'advance'
+ }
+}
+function runSideAI(side,t){
+ if(t<aiNextThink[side])return;aiNextThink[side]=t+.7;
+ updateAIOrders(side);
+ let ready=aiSpawnCd[side],usage=aiUse[side],available=sideRoster(side).filter(({fac,u})=>
+   sideGold(side)>=u.cost&&t>=(ready[fac+'|'+u.name]||0)&&
+   (!u.special.unique||!units.some(x=>!x.dead&&x.side===side&&x.name===u.name))
+ );
+ if(!available.length)return;
+ let scored=available.map(x=>{
+   let key=x.fac+'|'+x.u.name,novelty=(usage[key]||0)===0?1.28:1/Math.pow(1+usage[key]*.12,.35);
+   let needTank=units.filter(v=>!v.dead&&v.side===side&&v.role==='tank').length<3;
+   let roleFit=needTank&&x.u.role==='tank'?1.22:1;
+   return{x,score:unitValue(x.u)*novelty*roleFit*(.92+Math.random()*.16)}
+ }).sort((a,b)=>b.score-a.score);
+ let pick=scored[Math.floor(Math.random()*Math.min(3,scored.length))].x,key=pick.fac+'|'+pick.u.name;
+ let laneScores=[0,1,2].map(l=>armyPower(-side,l)-armyPower(side,l)+Math.random()*8),lane=laneScores.indexOf(Math.max(...laneScores));
+ spendSideGold(side,pick.u.cost);ready[key]=t+pick.u.gen;usage[key]=(usage[key]||0)+1;spawnUnit(side,lane,pick.fac,pick.u)
 }
 function spawnWave(side){
  const fac=sideFactions[side][waveIndex%2];
@@ -195,7 +222,7 @@ function loop(now){
  let dt=Math.min(.04,(now-last)/1000),t=now/1000;last=now;matchTime+=dt;income+=dt;waveClock+=dt;
  if(income>=2){let n=Math.floor(income/2);gold+=30*n;enemyGold+=30*n;income-=2*n}
  while(waveClock>=WAVE_INTERVAL){waveClock-=WAVE_INTERVAL;spawnWave(1);spawnWave(-1);waveIndex++}
- enemyAI(t);update(dt,t);updateTowers(t);draw(t);hud(t);
+ if(gameMode==='robot')runSideAI(1,t);runSideAI(-1,t);update(dt,t);updateTowers(t);draw(t);hud(t);
  if(playerBase<=0||enemyBase<=0){running=false;setTimeout(()=>alert(playerBase>0?`Vitória! ${timeText(matchTime)}`:`Derrota! ${timeText(matchTime)}`),50);return}
  requestAnimationFrame(loop)
 }
@@ -215,10 +242,38 @@ function nextStructure(u){
  return a.length?a.sort((x,y)=>Math.abs(x.x-u.x)-Math.abs(y.x-u.x))[0]:{kind:'base',side:-u.side,lane:u.lane,x:BASE_X[-u.side]}
 }
 function defX(u){
- let o=stance[u.lane];if(o==='base')return BASE_X[u.side]+u.side*220;
+ let o=orders[u.side][u.lane];if(o==='base')return BASE_X[u.side]+u.side*220;
  let a=aliveTowers(u.side,u.lane);if(!a.length)return BASE_X[u.side]+u.side*220;
  let r=a.sort((x,y)=>Math.abs(x.x-u.x)-Math.abs(y.x-u.x))[0];
  if(o==='behind')return r.x-u.side*190;if(o==='ahead')return r.x+u.side*190;return r.x-u.side*45
+}
+function enemyCandidates(u,range,pred=()=>true){
+ return units.filter(v=>!v.dead&&v.side!==u.side&&sameFront(u,v)&&pred(v)&&dist(u,v)<=range*PX).sort((a,b)=>dist(u,a)-dist(u,b))
+}
+function chaseAllowed(u,v,s){
+ if(!v||s.kind==='base')return !!v;
+ let margin=6*PX;
+ return u.side===1?v.x<=s.x+margin:v.x>=s.x-margin
+}
+function orderedEnemy(u,range,order,s){
+ if(order==='advance'){
+   let minion=enemyCandidates(u,range,v=>v.minion)[0];if(minion)return minion;
+   return enemyCandidates(u,range)[0]
+ }
+ if(order==='attack'){
+   let troop=enemyCandidates(u,range,v=>!v.minion&&chaseAllowed(u,v,s))[0];if(troop)return troop;
+   return enemyCandidates(u,range,v=>chaseAllowed(u,v,s))[0]
+ }
+ return enemyCandidates(u,range)[0]
+}
+function escortX(u){
+ let wave=units.filter(v=>!v.dead&&v.minion&&v.side===u.side&&v.lane===u.lane);
+ if(!wave.length){
+   let own=aliveTowers(u.side,u.lane);if(!own.length)return BASE_X[u.side]+u.side*220;
+   let front=own.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0];return front.x+u.side*190
+ }
+ let front=wave.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0],gap=(u.role==='ranged'||u.role==='support'||u.role==='controller'||u.role==='siege')?190:75;
+ return front.x-u.side*gap
 }
 function alliesNear(u,r=300){return units.filter(v=>!v.dead&&v.side===u.side&&v!==u&&v.lane===u.lane&&dist(u,v)<r).length}
 function attackRate(u){
@@ -245,14 +300,21 @@ function update(dt,t){
    if(u.dead)continue;passiveTick(u,dt,t);if(u.hp<=0){killUnit(u,null,t);continue}
    if(t<u.stunUntil)continue;
    support(u,t);
-   let foe=nearestEnemy(u,u.range),s=nextStructure(u),sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),
-       sr=Math.hypot(s.x-u.x,sy-yOf(u))<=u.range*PX;
+   let order=u.minion?'advance':orders[u.side][u.lane],s=nextStructure(u),sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),
+       sr=Math.hypot(s.x-u.x,sy-yOf(u))<=u.range*PX,foe=orderedEnemy(u,u.range,order,s),
+       chase=order==='attack'?orderedEnemy(u,15,order,s):null;
    if(u.role==='siege'&&sr){
      if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}
    }else if(foe){
      if(t-u.lastAttack>=attackRate(u)){attack(u,foe,t);u.lastAttack=t;u.attackCount++}
-   }else if(u.minion||u.side===-1||stance[u.lane]==='advance'){
+   }else if(chase){
+     move(u,chase.x,dt)
+   }else if(u.minion||order==='attack'){
      if(sr){if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}}else move(u,s.x,dt)
+   }else if(order==='advance'){
+     let destination=escortX(u);
+     if(sr&&siegeMinionNear(s)){if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}}
+     else move(u,destination,dt)
    }else move(u,defX(u),dt)
  }
  units=units.filter(u=>!u.dead&&u.hp>0)
