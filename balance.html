@@ -3,41 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stick Lanes — Laboratório</title>
+<title>Stick Lanes — Laboratório Frontline v3</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}.bulkSummary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.bulkSummary .badge{font-size:.82rem}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
+.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.82rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.08s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}.bulkSummary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="app" class="labPage">
 <section class="panel">
-  <div class="titleBlock"><div><span class="eyebrow">LABORATÓRIO</span><h1>Balanceamento automático</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">Robôs montam composições de 2 facções e 8 unidades, jogam sem renderização e aceleram o tempo virtual em 10×. O objetivo é encontrar composições dominantes e unidades fora da curva.</p>
+  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">26 facções, minions automáticos, 4 torres por lane e geração longa. O simulador usa uma batalha agregada sem renderização para rodar milhares de partidas rapidamente.</p>
   <div class="labControls">
-    <label>Partidas <select id="matchCount"><option>500</option><option>1000</option><option>2000</option><option selected>5000</option><option>10000</option></select></label>
-    <label>Candidatas <select id="candidateCount"><option>16</option><option>24</option><option selected>32</option><option>48</option><option>64</option></select></label>
-    <button id="runLab" class="primary">Rodar 5.000 simulações</button>
+    <label>Partidas <select id="matchCount"><option>1000</option><option>5000</option><option selected>10000</option><option>20000</option><option>50000</option></select></label>
+    <label>Candidatas <select id="candidateCount"><option>64</option><option selected>120</option><option>160</option><option>240</option></select></label>
+    <button id="runLab" class="primary">Rodar laboratório</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para simular uma bateria de 5.000 partidas.</p>
+  <p id="labStatus" class="muted">Pronto para simular 10.000 partidas.</p>
 </section>
-
 <div class="labGrid">
-<section class="panel"><h2>Melhores composições</h2><div id="bestComps"></div></section>
-<section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">Rode as simulações primeiro.</div></section>
+<section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
+<section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">A taxa principal só contará jogos em que a unidade realmente spawnou.</div></section>
 </div>
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
-  <div class="titleBlock"><div><span class="eyebrow">BANCO ACUMULADO</span><h2>Histórico por unidade</h2></div><button id="clearUnitBalance" class="secondary">Zerar banco</button></div>
-  <p class="muted">Soma todas as baterias executadas neste navegador: presença, vitórias, derrotas, empates, spawns e desempenho. Ideal para comparar versões do balanceamento.</p>
+  <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3</span><h2>Acumulado por unidade</h2></div><div><button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button></div></div>
+  <p class="muted">Separado do baseline antigo. Guarda aparições, partidas ativas, vitórias, derrotas, empates, spawns, impacto e dano estrutural.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
-  <div id="unitLifetime" class="muted">Nenhuma bateria acumulada ainda.</div>
+  <div id="unitLifetime" class="muted">Banco novo ainda vazio.</div>
 </section>
-<section class="panel"><div class="titleBlock"><div><span class="eyebrow">HISTÓRICO LOCAL</span><h2>Resultados salvos</h2></div><button id="clearLabHistory" class="secondary">Limpar histórico</button></div><p class="muted">Cada laboratório concluído é salvo automaticamente neste navegador.</p><div id="labHistory" class="muted">Nenhum resultado salvo ainda.</div></section>
+<section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As 12 baterias Frontline v3 mais recentes ficam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria v3 salva.</div></section>
 </div>
-<script src="balance.js"></script>
-<script src="balance-history.js"></script>
-<script src="balance-bulk.js"></script>
+<script src="factions-v3.js"></script>
+<script src="balance-v3.js"></script>
 </body>
 </html>
