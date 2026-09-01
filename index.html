@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stick Lanes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <section id="setup" class="panel">
+    <h1>Stick Lanes</h1>
+    <p class="muted">3 lanes • 3 torres por lane • 2 facções • 8 unidades</p>
+    <div class="row">
+      <label>Facção 1 <select id="f1"></select></label>
+      <label>Facção 2 <select id="f2"></select></label>
+    </div>
+    <h2>Escolha 8 unidades <span id="count" class="badge">0/8</span></h2>
+    <div id="pool" class="unitPool"></div>
+    <button id="start" class="primary disabled">Começar batalha</button>
+  </section>
+
+  <section id="gameUI" hidden>
+    <div class="panel hud">
+      <div><b>Ouro:</b> <span id="gold">500</span> <span class="badge">+30 / 2s</span> <span class="badge">abate 10%</span></div>
+      <div><b>Base:</b> <span id="playerBase">3000</span> × <span id="enemyBase">3000</span></div>
+      <div><b>Torres:</b> <span id="playerTowers">9</span> × <span id="enemyTowers">9</span></div>
+      <button id="restart" class="secondary">Recomeçar</button>
+    </div>
+    <div id="laneControls" class="panel laneControls"></div>
+    <div class="mapWrap"><canvas id="game" width="1800" height="900"></canvas></div>
+    <div class="panel">
+      <div id="spawnbar" class="spawnbar"></div>
+      <p class="muted">Toque numa lane do mapa e depois numa unidade. A ordem escolhida vale para toda aquela lane.</p>
+    </div>
+  </section>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
