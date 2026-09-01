@@ -10,10 +10,7 @@
 <div id="app">
   <section id="setup" class="panel setupPanel">
     <div class="titleBlock">
-      <div>
-        <span class="eyebrow">PROTÓTIPO</span>
-        <h1>Stick Lanes</h1>
-      </div>
+      <div><span class="eyebrow">PROTÓTIPO</span><h1>Stick Lanes</h1></div>
       <span class="statusPill">mapa 5× • 2.5D</span>
     </div>
     <p class="muted">3 lanes que convergem nas bases • 3 torres por lane • 2 facções • 8 unidades</p>
@@ -21,6 +18,19 @@
       <label>Facção 1 <select id="f1"></select></label>
       <label>Facção 2 <select id="f2"></select></label>
     </div>
+
+    <div class="compositionBox">
+      <div class="compositionTitle"><strong>Composições</strong><a class="labLink" href="balance.html">Laboratório de balanceamento →</a></div>
+      <div class="compositionControls">
+        <input id="compName" maxlength="40" placeholder="Nome da composição">
+        <button id="saveComp" class="secondary">Salvar atual</button>
+        <select id="savedComps" aria-label="Composições salvas"></select>
+        <button id="loadComp" class="secondary">Carregar</button>
+        <button id="deleteComp" class="secondary danger">Excluir</button>
+      </div>
+      <small id="compMessage" class="muted">O salvamento fica somente neste navegador/aparelho.</small>
+    </div>
+
     <h2>Escolha 8 unidades <span id="count" class="badge">0/8</span></h2>
     <div id="pool" class="unitPool"></div>
     <button id="start" class="primary disabled">Começar batalha</button>
@@ -33,9 +43,7 @@
       <div class="hudStat"><span>Torres</span><b><span id="playerTowers">9</span> × <span id="enemyTowers">9</span></b></div>
       <div class="hudActions"><span class="badge">abate 10%</span><button id="restart" class="secondary">Recomeçar</button></div>
     </div>
-
     <div id="laneControls" class="panel laneControls"></div>
-
     <div class="cameraBar panel compactPanel">
       <div class="cameraButtons">
         <button id="camLeft" class="secondary" aria-label="Mover câmera para a esquerda">◀</button>
@@ -46,11 +54,7 @@
       </div>
       <span class="muted">Arraste o campo para mover a câmera. Toque numa lane para selecioná-la.</span>
     </div>
-
-    <div class="mapShell">
-      <canvas id="game" width="1800" height="1000"></canvas>
-    </div>
-
+    <div class="mapShell"><canvas id="game" width="1800" height="1000"></canvas></div>
     <div class="panel spawnPanel">
       <div id="spawnbar" class="spawnbar"></div>
       <p class="muted">A ordem escolhida vale para toda a lane. Perto das bases, as três rotas se juntam num único corredor de ataque.</p>
@@ -58,5 +62,6 @@
   </section>
 </div>
 <script src="game.js"></script>
+<script src="extras.js"></script>
 </body>
 </html>
