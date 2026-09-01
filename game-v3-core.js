@@ -23,7 +23,7 @@ const towerTypes=[
 const BASE_HP=6000,WAVE_INTERVAL=22;
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,waveClock=0,waveIndex=0;
-let enemyFactions=[],sideFactions={1:[], '-1':[]};
+let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
 let unitSeq=0,showTowerRanges=false;
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
 const aiSpawnCd={1:{},'-1':{}},aiUse={1:{},'-1':{}},aiNextThink={1:0,'-1':0};
@@ -134,6 +134,7 @@ function reset(){
  for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0}
  makeStructures();
  enemyFactions=[...SL_FACTION_ORDER].sort(()=>Math.random()-.5).slice(0,2);
+ enemyLoadout=buildAIDeck(enemyFactions);
  sideFactions={1:[f1.value,f2.value],'-1':enemyFactions};
  running=true;last=performance.now();requestAnimationFrame(loop)
 }
@@ -180,8 +181,17 @@ function spawnPlayer(i){
 function unitValue(u){let dps=u.atk/Math.max(.45,u.rate),ehp=u.hp*(1+u.def/130);return Math.sqrt(dps*ehp)*(1+u.range*.018)/(Math.pow(u.cost,0.55)*(1+u.gen/220))}
 function sideGold(side){return side===1?gold:enemyGold}
 function spendSideGold(side,n){if(side===1)gold-=n;else enemyGold-=n}
+function buildAIDeck(factions){
+ let pool=factions.flatMap(f=>FACTIONS[f].map(u=>({fac:f,u}))),picked=[];
+ for(const role of ['tank','ranged','support','controller','siege']){
+   let best=pool.filter(x=>x.u.role===role&&!picked.includes(x)).sort((a,b)=>unitValue(b.u)-unitValue(a.u))[0];
+   if(best)picked.push(best)
+ }
+ for(const x of [...pool].sort((a,b)=>unitValue(b.u)-unitValue(a.u)))if(picked.length<8&&!picked.includes(x))picked.push(x);
+ return picked.slice(0,8)
+}
 function sideRoster(side){
- return side===1?loadout:enemyFactions.flatMap(f=>FACTIONS[f].map(u=>({fac:f,u})))
+ return side===1?loadout:enemyLoadout
 }
 function armyPower(side,lane){
  return units.filter(u=>!u.dead&&u.side===side&&u.lane===lane).reduce((sum,u)=>sum+u.hp/u.maxHp*(u.atk/Math.max(.5,u.rate))*(u.minion?.55:1),0)
@@ -192,6 +202,7 @@ function updateAIOrders(side){
    let wave=units.some(u=>!u.dead&&u.minion&&u.side===side&&u.lane===lane);
    orders[side][lane]=wave&&own>=foe*.72?'advance':own>foe*1.45?'attack':foe>own*1.3?'behind':'advance'
  }
+ if(side===1&&gameMode==='robot')document.querySelectorAll('.laneControl').forEach((box,lane)=>box.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===orders[1][lane])))
 }
 function runSideAI(side,t){
  if(t<aiNextThink[side])return;aiNextThink[side]=t+.7;
@@ -201,6 +212,7 @@ function runSideAI(side,t){
    canSpawnUnit(side,u)
  );
  if(!available.length)return;
+ let unseen=available.filter(x=>(usage[x.fac+'|'+x.u.name]||0)===0);if(unseen.length)available=unseen;
  let scored=available.map(x=>{
    let key=x.fac+'|'+x.u.name,novelty=(usage[key]||0)===0?1.28:1/Math.pow(1+usage[key]*.12,.35);
    let needTank=units.filter(v=>!v.dead&&v.side===side&&v.role==='tank').length<3;
