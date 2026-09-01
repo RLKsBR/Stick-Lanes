@@ -7,6 +7,11 @@ mapScript.onload=()=>{
   assetScript.onload=()=>{
     const cameraScript=document.createElement('script');
     cameraScript.src='map-2_5d-v5.js';
+    cameraScript.onload=()=>{
+      const layoutScript=document.createElement('script');
+      layoutScript.src='map-layout-v5.js';
+      document.head.appendChild(layoutScript);
+    };
     document.head.appendChild(cameraScript);
   };
   document.head.appendChild(assetScript);
