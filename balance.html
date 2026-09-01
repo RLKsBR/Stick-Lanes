@@ -12,8 +12,8 @@
 <body>
 <div id="app" class="labPage">
 <section class="panel">
-  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MAPA V4</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">26 facções, minions automáticos, 4 torres por lane e geração longa. Usa os atributos v3.3 e aproxima o mapa v4: rotas laterais mais longas e rota central curta, porém fortemente defendida.</p>
+  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MINIONS V2</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">Minions usam velocidade uniforme e ondas de 1 tanque, 2 lutadores e 3 unidades à distância por lane. O simulador usa os atributos v3.3 e a defesa central reforçada.</p>
   <div class="labControls">
     <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
     <div id="fixedFactionControls" class="fixedFactionControls" hidden>
@@ -26,8 +26,8 @@
     <button id="runLab" class="primary">Rodar simulação</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para testar o balanceamento v3.3 no mapa v4.</p>
-  <div id="durationCurrent" class="bulkSummary"><span class="muted">Laterais: pressão estrutural reduzida pela rota longa. Centro: acesso direto, mas torres com +65% de vida e retaliação mais forte.</span></div>
+  <p id="labStatus" class="muted">Pronto para testar a formação 1/2/3 dos minions.</p>
+  <div id="durationCurrent" class="bulkSummary"><span class="muted">Cada onda agora representa 6 minions por lane: tanque na frente, lutadores no meio e ranged atrás.</span></div>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
@@ -36,18 +36,20 @@
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
   <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3.3</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
-  <p class="muted">O baseline v3.2 é arquivado automaticamente. O banco atual mede os atributos v3.3 com a lógica estratégica do mapa v4.</p>
+  <p class="muted">O banco atual usa os atributos v3.3 e a nova pressão de onda dos minions.</p>
   <p id="jsonStatus" class="muted">JSON Frontline pode ser exportado e importado novamente; confira o ruleset antes de substituir o banco atual.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
   <div id="durationLifetime" class="bulkSummary"></div>
-  <div id="unitLifetime" class="muted">Banco v3.3 ainda vazio.</div>
+  <div id="unitLifetime" class="muted">Banco ainda vazio.</div>
 </section>
-<section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As 12 baterias v3.3 mais recentes ficam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria v3.3 salva.</div></section>
+<section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As 12 baterias mais recentes ficam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria salva.</div></section>
 </div>
 <script src="factions-v3.js"></script>
+<script src="minion-speed-v1.js"></script>
 <script src="balance-patch-v3-3.js"></script>
 <script src="balance-v3.js"></script>
 <script src="balance-map-v4.js"></script>
+<script src="balance-minion-wave-v2.js"></script>
 <script src="balance-import.js"></script>
 </body>
 </html>
