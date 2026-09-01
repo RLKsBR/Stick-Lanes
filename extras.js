@@ -10,15 +10,20 @@ mapScript.onload=()=>{
     cameraScript.onload=()=>{
       const layoutScript=document.createElement('script');
       layoutScript.src='map-layout-v5.js';
+      layoutScript.onload=()=>{
+        const movementScript=document.createElement('script');
+        movementScript.src='movement-v6.js';
+        document.head.appendChild(movementScript);
+      };
       document.head.appendChild(layoutScript);
     };
     document.head.appendChild(cameraScript);
   };
   document.head.appendChild(assetScript);
   const pill=document.querySelector('.statusPill');
-  if(pill)pill.textContent='22.500 • mapa 2D e meio • zoom por pinça';
+  if(pill)pill.textContent='22.500 • mapa 2D e meio • movimento 3×';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L.';
+  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L. Movimento global 3×.';
 };
 document.head.appendChild(mapScript);
 
