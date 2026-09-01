@@ -20,8 +20,9 @@ O menu principal possui somente:
 
 - Mundo horizontal de **22.500 unidades**.
 - **3 lanes**, cada uma com **3 sub-lanes**.
-- **4 torres principais por lane** e base com **6.000 de vida**.
+- **4 torres principais + 6 torretas auxiliares por lane** e base com **6.000 de vida**.
 - Alcance atual das torres, já na escala ampliada: avançada 30, central 30, traseira 32 e fortaleza 36.
+- As torretas possuem 900 de vida, alcance 4 e ficam distribuídas duas a duas entre as torres principais, preservando zonas livres no trajeto.
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
 - Economia: **+30 de ouro a cada 2 segundos**.
 - Ordens por lane: **Base**, **Atrás da torre**, **À frente da torre**, **Avançar** e **Atacar**.
@@ -52,16 +53,20 @@ Os planos visuais completos são mantidos fora do código e devem ser consultado
 O laboratório executa simulações sem renderização. O padrão atual é **500 partidas** e **80 composições candidatas**.
 
 - Facções podem ser aleatórias ou fixas.
-- Cada robô escolhe oito tropas e decide durante a partida quando comprar, quanto ouro reter e qual lane reforçar.
+- Cada robô escolhe oito tropas e decide durante a partida quando comprar, quanto ouro reter, qual lane reforçar e qual das cinco ordens usar em cada frente.
 - Os pesos de decisão aprendem durante a bateria; rush, turtle e split push não são presets rígidos.
+- A semente-base e a quantidade de repetições tornam a bateria reproduzível e são salvas junto do resultado. O padrão agrega 3 sementes.
+- Os confrontos usam calendário round-robin, reduzindo diferenças artificiais de exposição entre composições.
 - A métrica principal de uma unidade considera partidas em que ela realmente entrou em campo.
 - O relatório registra vitórias, uso, impacto, dano estrutural, duração, P50, P90, impasses e perfis estratégicos.
 - Não existe duração máxima fixa. O relógio de impasse é zerado sempre que qualquer torre ou base perde vida; somente **2 horas simuladas sem dano estrutural** encerram a partida como impasse técnico.
-- O laboratório modela duas torretas auxiliares entre cada par de torres principais. Essa formação ainda não foi portada para o jogo renderizado.
+- O laboratório e o jogo renderizado usam a mesma formação estrutural: duas torretas auxiliares entre cada par de torres principais.
 
 O banco acumulado usa `localStorage` e pode ser exportado em JSON. A importação só substitui o banco ativo quando o `ruleset` é exatamente o mesmo. Arquivos de regras antigas são arquivados separadamente para impedir que resultados incomparáveis contaminem o balanceamento atual.
 
 O JSON `frontline-v3.2` produzido antes das camadas de mapa, torretas e estratégia serve como histórico, não como base para ajustar diretamente o `ruleset` atual.
+
+Um ajuste numérico só deve ser promovido depois de repetir a bateria em múltiplas sementes. Resultados de uma única sequência não são tratados como prova suficiente de força ou fraqueza.
 
 ## Arquitetura
 
@@ -77,4 +82,4 @@ Arquivos principais:
 
 ## Status
 
-Protótipo ativo. O visual procedural ainda é provisório. Os próximos passos são portar as torretas auxiliares para o jogo renderizado, levar as ordens táticas completas ao simulador headless e substituir representações genéricas pelo pipeline visual 2,5D planejado para cada facção.
+Protótipo ativo. O visual procedural ainda é provisório. As ordens táticas do simulador são uma aproximação agregada, enquanto o jogo visível movimenta unidades individualmente. Os próximos passos são calibrar essas duas execuções com baterias atuais e substituir representações genéricas pelo pipeline visual 2,5D planejado para cada facção.

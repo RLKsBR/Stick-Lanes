@@ -29,7 +29,7 @@ Este documento registra a autoridade real das camadas atuais. Ele não propõe u
 | 5 | `balance-map-v4.js` | pressão lateral e defesa reforçada do centro |
 | 6 | `balance-minion-wave-v2.js` | onda 1/2/3 por lane |
 | 7 | `balance-turrets-v1.js` | seis torretas auxiliares por lane no modelo headless |
-| 8 | `balance-strategy-v1.js` | decisão adaptativa, duração aberta e detector de impasse |
+| 8 | `balance-strategy-v1.js` | compra, escolha de lane, ordens adaptativas, duração aberta e detector de impasse |
 | 9 | `balance-import.js` | entrada segura de bancos JSON |
 
 Funções como `newSide`, `spawnWave`, `towerRetaliation`, `simMatch`, `run` e os histogramas são deliberadamente substituídas pelas camadas posteriores. Ler somente `balance-v3.js` não descreve o simulador em produção.
@@ -52,6 +52,8 @@ Funções como `newSide`, `spawnWave`, `towerRetaliation`, `simMatch`, `run` e o
 
 O `ruleset` identifica toda combinação de balanceamento, mapa, onda, torretas e estratégia. Resultados só podem ser somados ou substituir o banco ativo quando o identificador é idêntico.
 
+O laboratório estratégico usa semente explícita e calendário `round-robin-v1`. A semente é armazenada no banco e no histórico; repetir ruleset, parâmetros e semente deve reproduzir a bateria.
+
 Ao mudar uma regra que afeta resultados:
 
 1. altere a versão da camada responsável;
@@ -61,9 +63,8 @@ Ao mudar uma regra que afeta resultados:
 
 ## Divergências conhecidas
 
-- As torretas auxiliares existem no simulador headless, mas ainda não no jogo renderizado.
-- A IA headless decide economia, tropa e lane; ainda não simula todas as ordens táticas do jogador.
-- A IA do jogo renderizado usa as ordens disponíveis, mas sua política ainda é heurística e separada do aprendizado headless.
+- A IA headless usa as cinco ordens do jogador, mas seus efeitos são agregados por lane; o jogo renderizado resolve posição, perseguição e alvo unidade por unidade.
+- A IA do jogo renderizado usa as mesmas ordens, mas sua política ainda é heurística e separada do aprendizado headless.
 - O mapa Canvas e os bonecos procedurais são ferramentas de protótipo, não o visual final 2,5D.
 
 Essas lacunas devem ser fechadas incrementalmente. Não unifique os dois motores por uma grande reescrita enquanto gameplay, mapa e pipeline visual ainda estão em consolidação.

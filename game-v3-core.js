@@ -20,6 +20,7 @@ const towerTypes=[
  COMBAT.tower.central,
  COMBAT.tower.advanced
 ];
+const AUX_TURRET={label:'Torreta',hp:900,atk:10,range:4,rate:1.15,visualTier:0,auxiliary:true};
 const BASE_HP=6000,WAVE_INTERVAL=22;
 const MINION_WAVE_FORMATION=[['tank',-1],['fighter',0],['fighter',0],['ranged',1],['ranged',1],['ranged',1]];
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
@@ -165,9 +166,16 @@ function reset(){
 }
 function makeStructures(){
  structures=[];
- for(const side of [1,-1])for(let lane=0;lane<3;lane++)towerXs[side].forEach((x,i)=>{
-   let t=towerTypes[i];structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
- })
+ for(const side of [1,-1])for(let lane=0;lane<3;lane++){
+   const xs=towerXs[side];
+   xs.forEach((x,i)=>{
+     let t=towerTypes[i];structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
+   });
+   for(let i=0;i<xs.length-1;i++)for(let step=1;step<=2;step++){
+     let x=xs[i]+(xs[i+1]-xs[i])*step/3,t=AUX_TURRET;
+     structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
+   }
+ }
 }
 function aliveTowers(side,lane){return structures.filter(s=>!s.dead&&s.side===side&&s.lane===lane)}
 function baseHp(side){return side===1?playerBase:enemyBase}

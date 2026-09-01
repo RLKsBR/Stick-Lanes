@@ -59,6 +59,7 @@ function normalizeCurrent(raw){
    updatedAt:Math.floor(num(raw.updatedAt))||Date.now(),
    simulationMode:String(raw.simulationMode||''),
    noFixedTimeLimit:!!raw.noFixedTimeLimit,
+   lastBatch:raw.lastBatch&&typeof raw.lastBatch==='object'?{seed:Math.floor(num(raw.lastBatch.seed)),seedCount:Math.floor(num(raw.lastBatch.seedCount)),seeds:Array.isArray(raw.lastBatch.seeds)?raw.lastBatch.seeds.map(x=>Math.floor(num(x))).slice(0,16):[],matchesPerSeed:Math.floor(num(raw.lastBatch.matchesPerSeed)),schedule:String(raw.lastBatch.schedule||''),matches:Math.floor(num(raw.lastBatch.matches)),updatedAt:Math.floor(num(raw.lastBatch.updatedAt))}:{},
    strategyProfiles:normalizeProfiles(raw.strategyProfiles)
  }
 }
