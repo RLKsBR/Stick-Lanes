@@ -13,7 +13,13 @@ function unitPower(u){let m=1,s=u.special||{};if(s.block)m+=.08;if(s.dodge)m+=s.
 function value(u){return unitPower(u)/(Math.pow(Math.max(50,u.cost),.68)*(1+u.gen/150))}
 function pct(n,d=1){return d?(100*n/d).toFixed(1)+'%':'0.0%'}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function choosePair(){let a=Math.floor(Math.random()*FAC.length),b=Math.floor(Math.random()*(FAC.length-1));if(b>=a)b++;return[FAC[a],FAC[b]]}
+function randomPair(){let a=Math.floor(Math.random()*FAC.length),b=Math.floor(Math.random()*(FAC.length-1));if(b>=a)b++;return[FAC[a],FAC[b]]}
+function choosePair(){
+ if($('#simFactionMode')?.value==='fixed'){
+   let a=$('#simF1').value,b=$('#simF2').value;if(a&&b&&a!==b)return[a,b]
+ }
+ return randomPair()
+}
 function pickWeighted(pool,n){
  let w=[...pool],out=[];while(out.length<n&&w.length){let weights=w.map(u=>Math.pow(value(u),1.18)*(.45+Math.random()*1.1)),sum=weights.reduce((a,b)=>a+b,0),r=Math.random()*sum,i=0;for(;i<weights.length-1;i++){r-=weights[i];if(r<=0)break}out.push(w.splice(i,1)[0])}return out
 }
@@ -158,6 +164,24 @@ async function run(){
  bar.style.width='100%';renderTop(cands);renderUnits(stats);saveDatabase(stats,total);snapshot(cands,stats,total);renderDatabase();renderHistory();
  st.textContent=`Concluído: ${total.toLocaleString('pt-BR')} simulações Frontline v3.`;btn.disabled=false
 }
+function fillSimulationFactions(){
+ let a=$('#simF1'),b=$('#simF2');for(const f of FAC){a.add(new Option(f,f));b.add(new Option(f,f))}
+ a.value=FAC[0];b.value=FAC[1]
+}
+function syncSimulationFactionMode(){
+ let fixed=$('#simFactionMode').value==='fixed';$('#fixedFactionControls').hidden=!fixed;
+ $('#labStatus').textContent=fixed?`Pronto para simular com ${$('#simF1').value} + ${$('#simF2').value}.`:'Pronto para simular com facções aleatórias e tropas escolhidas pelos robôs.'
+}
+function ensureDifferentSimulationFactions(changed){
+ let a=$('#simF1'),b=$('#simF2');if(a.value!==b.value)return;
+ let other=FAC.find(f=>f!==changed.value);if(changed===a)b.value=other;else a.value=other
+}
+fillSimulationFactions();
+$('#simFactionMode').onchange=syncSimulationFactionMode;
+$('#simF1').onchange=()=>{ensureDifferentSimulationFactions($('#simF1'));syncSimulationFactionMode()};
+$('#simF2').onchange=()=>{ensureDifferentSimulationFactions($('#simF2'));syncSimulationFactionMode()};
+$('#randomizeSimFactions').onclick=()=>{let pair=randomPair();$('#simF1').value=pair[0];$('#simF2').value=pair[1];syncSimulationFactionMode()};
+syncSimulationFactionMode();
 $('#runLab').onclick=run;
 $('#clearUnitBalance').onclick=()=>{if(confirm('Zerar somente o banco acumulado Frontline v3? O baseline antigo exportado não é afetado.')){localStorage.removeItem(DB_KEY);renderDatabase()}};
 $('#exportUnitBalance').onclick=()=>{let db=readJSON(DB_KEY,null);if(!db)return;let a=document.createElement('a'),blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download=`stick-lanes-frontline-v3-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
