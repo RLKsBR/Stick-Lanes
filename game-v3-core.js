@@ -207,12 +207,10 @@ function updateAIOrders(side){
 function runSideAI(side,t){
  if(t<aiNextThink[side])return;aiNextThink[side]=t+.7;
  updateAIOrders(side);
- let ready=aiSpawnCd[side],usage=aiUse[side],available=sideRoster(side).filter(({fac,u})=>
-   sideGold(side)>=u.cost&&t>=(ready[fac+'|'+u.name]||0)&&
-   canSpawnUnit(side,u)
- );
+ let ready=aiSpawnCd[side],usage=aiUse[side],roster=sideRoster(side);
+ let unusedAll=roster.filter(({fac,u})=>(usage[fac+'|'+u.name]||0)===0),source=unusedAll.length?unusedAll:roster;
+ let available=source.filter(({fac,u})=>sideGold(side)>=u.cost&&t>=(ready[fac+'|'+u.name]||0)&&canSpawnUnit(side,u));
  if(!available.length)return;
- let unseen=available.filter(x=>(usage[x.fac+'|'+x.u.name]||0)===0);if(unseen.length)available=unseen;
  let scored=available.map(x=>{
    let key=x.fac+'|'+x.u.name,novelty=(usage[key]||0)===0?1.28:1/Math.pow(1+usage[key]*.12,.35);
    let needTank=units.filter(v=>!v.dead&&v.side===side&&v.role==='tank').length<3;
