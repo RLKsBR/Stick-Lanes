@@ -17,6 +17,7 @@
     <div class="row factionRow">
       <label>Facção 1 <select id="f1"></select></label>
       <label>Facção 2 <select id="f2"></select></label>
+      <label>Modo <select id="gameMode"><option value="pve">Jogador × IA</option><option value="robot">Simulação assistida — Robô × Robô</option></select></label>
     </div>
     <div id="factionIdentity" class="panel compactPanel muted"></div>
 
@@ -44,7 +45,7 @@
       <div class="hudStat"><span>Próxima onda</span><b id="waveTimer">22s</b><small>9 minions por lado</small></div>
       <div class="hudStat"><span>Bases</span><b><span id="playerBase">6000</span> × <span id="enemyBase">6000</span></b></div>
       <div class="hudStat"><span>Torres</span><b><span id="playerTowers">12</span> × <span id="enemyTowers">12</span></b></div>
-      <div class="hudActions"><span class="badge">counter minion +20%</span><button id="restart" class="secondary">Recomeçar</button></div>
+      <div class="hudActions"><span id="modeStatus" class="badge">Jogador × IA</span><div id="simSpeedControls" class="simSpeedControls" hidden><span class="muted">Velocidade</span><button class="secondary active" data-speed="1">1×</button><button class="secondary" data-speed="3">3×</button><button class="secondary" data-speed="10">10×</button><button class="secondary" data-speed="20">20×</button></div><span class="badge">counter minion +20%</span><button id="restart" class="secondary">Recomeçar</button></div>
     </div>
     <div id="laneControls" class="panel laneControls"></div>
     <div class="cameraBar panel compactPanel">
@@ -53,9 +54,10 @@
         <button id="camHome" class="secondary">Minha base</button>
         <button id="camMid" class="secondary">Centro</button>
         <button id="camEnemy" class="secondary">Base inimiga</button>
+        <button id="towerRanges" class="secondary">Alcance das torres</button>
         <button id="camRight" class="secondary" aria-label="Mover câmera para a direita">▶</button>
       </div>
-      <span class="muted">Cada lane tem três trilhas. Os minions nascem no eixo central e se separam em tanque, lutador e distância.</span>
+      <span class="muted">Torres secas ficam fortificadas. Um minion na zona de cerco remove a proteção; use o botão de alcance para conferir a cobertura.</span>
     </div>
     <div class="mapShell"><canvas id="game" width="1800" height="1000"></canvas></div>
     <div class="panel spawnPanel">

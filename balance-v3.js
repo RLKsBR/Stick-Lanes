@@ -33,8 +33,8 @@ function generateCandidates(n){
  let guard=0;while(out.length<n&&guard++<4000){let c=makeCandidate(),sig=c.units.map(u=>u.key).sort().join(';');if(!seen.has(sig)){seen.add(sig);out.push(c)}}return out
 }
 function newSide(comp){
- return{comp,gold:500,base:6000,towers:[[600,800,1000,1200],[600,800,1000,1200],[600,800,1000,1200]],
- lanes:[newLane(),newLane(),newLane()],ready:{},metrics:{},wave:0}
+ return{comp,gold:500,base:6000,towers:[[2200,3000,4000,5400],[2200,3000,4000,5400],[2200,3000,4000,5400]],
+ lanes:[newLane(),newLane(),newLane()],ready:{},usage:{},metrics:{},wave:0}
 }
 function newLane(){return{army:0,minion:0,minionFac:null,unitShare:{}}}
 function towerIndex(s,l){let a=s.towers[l];for(let i=0;i<a.length;i++)if(a[i]>0)return i;return-1}
@@ -43,12 +43,14 @@ function addUnit(side,lane,u){
  let m=side.metrics[u.key]||(side.metrics[u.key]={spawns:0,impact:0,structure:0});m.spawns++
 }
 function chooseSpawn(side,t){
- let avail=side.comp.units.filter(u=>side.gold>=u.cost&&t>=(side.ready[u.key]||0));if(!avail.length)return null;
+ let unusedAll=side.comp.units.filter(u=>(side.usage[u.key]||0)===0);
+ let source=unusedAll.length?unusedAll:side.comp.units;
+ let avail=source.filter(u=>side.gold>=u.cost&&t>=(side.ready[u.key]||0));if(!avail.length)return null;
  avail.sort((a,b)=>value(b)*(.86+Math.random()*.28)-value(a)*(.86+Math.random()*.28));return avail[0]
 }
 function spawnStep(me,foe,t){
  let limit=0;while(limit++<2){let u=chooseSpawn(me,t);if(!u)return;me.gold-=u.cost;me.ready[u.key]=t+u.gen;
- let scores=[0,1,2].map(i=>foe.lanes[i].army+foe.lanes[i].minion-me.lanes[i].army-me.lanes[i].minion+Math.random()*18),lane=scores.indexOf(Math.max(...scores));addUnit(me,lane,u)}
+ let scores=[0,1,2].map(i=>foe.lanes[i].army+foe.lanes[i].minion-me.lanes[i].army-me.lanes[i].minion+Math.random()*18),lane=scores.indexOf(Math.max(...scores));me.usage[u.key]=(me.usage[u.key]||0)+1;addUnit(me,lane,u)}
 }
 function spawnWave(side){
  let fac=side.comp.pair[side.wave%2];side.wave++;
@@ -65,7 +67,7 @@ function reduceLane(lane,loss){
 function counterMult(att,def){return att.minionFac&&def.minionFac&&SL_COUNTERS[att.minionFac]===def.minionFac?1.20:1}
 function applyStructureDamage(attacker,defender,lane,amount){
  if(amount<=0)return;let ti=towerIndex(defender,lane),target=ti>=0?defender.towers[lane]:null;
- if(ti>=0){let d=Math.min(target[ti],amount);target[ti]-=d;allocateStructure(attacker.lanes[lane],attacker,d)}
+ if(ti>=0){if(attacker.lanes[lane].minion<=.01)amount*=SL_COMBAT_RULES.siege.fortifiedDamageTaken;let d=Math.min(target[ti],amount);target[ti]-=d;allocateStructure(attacker.lanes[lane],attacker,d)}
  else{let d=Math.min(defender.base,amount);defender.base-=d;allocateStructure(attacker.lanes[lane],attacker,d)}
 }
 function allocateStructure(lane,side,dmg){
@@ -73,7 +75,7 @@ function allocateStructure(lane,side,dmg){
  for(let [k,p] of Object.entries(lane.unitShare)){let m=side.metrics[k]||(side.metrics[k]={spawns:0,impact:0,structure:0});m.structure+=dmg*(p/sum)}
 }
 function towerRetaliation(defender,lane,attLane,dt){
- let ti=towerIndex(defender,lane);if(ti<0)return;let dps=[24/1.6,30/1.5,36/1.4,42/1.3][ti];reduceLane(attLane,dps*dt*.13)
+ let ti=towerIndex(defender,lane);if(ti<0)return;let dps=[20/1.6,25/1.5,30/1.4,36/1.3][ti];reduceLane(attLane,dps*dt*.13)
 }
 function fightLane(A,B,sideA,sideB,lane,dt,t){
  let aEff=A.army+A.minion*counterMult(A,B),bEff=B.army+B.minion*counterMult(B,A);
@@ -82,8 +84,8 @@ function fightLane(A,B,sideA,sideB,lane,dt,t){
  for(let [k,p] of Object.entries(B.unitShare)){let m=sideB.metrics[k]||(sideB.metrics[k]={spawns:0,impact:0,structure:0});m.impact+=aEff?lossA*(p/Math.max(1,B.army)):0}
  aEff=A.army+A.minion*counterMult(A,B);bEff=B.army+B.minion*counterMult(B,A);
  let pace=t<480?.60:t<720?.78:1;
- if(aEff>bEff*1.15){let pressure=(aEff-bEff*.8)*dt*.0065*pace;applyStructureDamage(sideA,sideB,lane,pressure);towerRetaliation(sideB,lane,A,dt)}
- else if(bEff>aEff*1.15){let pressure=(bEff-aEff*.8)*dt*.0065*pace;applyStructureDamage(sideB,sideA,lane,pressure);towerRetaliation(sideA,lane,B,dt)}
+ if(aEff>bEff*1.15){let siegeA=A.army+A.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeA-bEff*.8)*dt*.0065*pace;applyStructureDamage(sideA,sideB,lane,pressure);towerRetaliation(sideB,lane,A,dt)}
+ else if(bEff>aEff*1.15){let siegeB=B.army+B.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeB-aEff*.8)*dt*.0065*pace;applyStructureDamage(sideB,sideA,lane,pressure);towerRetaliation(sideA,lane,B,dt)}
 }
 function scoreSide(A,B){
  let s=A.base-B.base;for(let l=0;l<3;l++){s+=(A.towers[l].reduce((a,b)=>a+b,0)-B.towers[l].reduce((a,b)=>a+b,0))*.45;s+=(A.lanes[l].army+A.lanes[l].minion-B.lanes[l].army-B.lanes[l].minion)*.25}return s
