@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stick Lanes — Laboratório Frontline v3</title>
+<title>Stick Lanes — Laboratório Estratégico</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.82rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.08s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}.bulkSummary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
+.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.82rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0;white-space:normal}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.08s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}.bulkSummary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="app" class="labPage">
 <section class="panel">
-  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MINIONS V2 • TORRETAS V1</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">Minions usam velocidade uniforme e ondas de 1 tanque, 2 lutadores e 3 unidades à distância por lane. O mapa agora inclui duas torretas entre cada par de torres principais, preservando janelas de avanço.</p>
+  <div class="titleBlock"><div><span class="eyebrow">HEADLESS ESTRATÉGICO • SEM LIMITE FIXO</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">A simulação não desenha a batalha, mas agora as IAs tomam decisões durante a partida. Elas observam ameaça, oportunidade, ouro, unidades disponíveis, pressão de minions e estado das estruturas. Não existem táticas nomeadas pré-programadas: os pesos mudam e os comportamentos são descritos depois.</p>
   <div class="labControls">
     <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
     <div id="fixedFactionControls" class="fixedFactionControls" hidden>
@@ -21,28 +21,33 @@
       <label>Facção 2 <select id="simF2"></select></label>
       <button id="randomizeSimFactions" class="secondary">Sortear par</button>
     </div>
-    <label>Partidas <select id="matchCount"><option>1000</option><option>5000</option><option selected>10000</option><option>20000</option><option>50000</option></select></label>
-    <label>Candidatas <select id="candidateCount"><option>160</option><option selected>240</option><option>320</option></select></label>
-    <button id="runLab" class="primary">Rodar simulação</button>
+    <label>Partidas <select id="matchCount"><option>100</option><option>250</option><option selected>500</option><option>1000</option><option>5000</option><option>10000</option><option>20000</option><option>50000</option></select></label>
+    <label>Candidatas <select id="candidateCount"><option>48</option><option selected>80</option><option>120</option><option>240</option><option>320</option></select></label>
+    <button id="runLab" class="primary">Rodar simulação estratégica</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para testar minions 1/2/3 e torretas auxiliares.</p>
-  <div id="durationCurrent" class="bulkSummary"><span class="muted">Cobertura defensiva aproximada: ~80% na central e ~76% nas laterais; o restante fica como janela de avanço.</span></div>
+  <p id="labStatus" class="muted">Pronto para 500 partidas estratégicas aceleradas.</p>
+  <div id="durationCurrent" class="bulkSummary"><span class="muted">Não existe corte em 90 minutos. Uma partida continua enquanto houver progresso; somente um macroestado repetido muitas vezes é tratado como impasse técnico.</span></div>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
 <section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">A taxa principal só contará jogos em que a unidade realmente spawnou.</div></section>
 </div>
+<section class="panel">
+  <div class="titleBlock"><div><span class="eyebrow">COMPORTAMENTO OBSERVADO</span><h2>Estratégias emergentes</h2></div></div>
+  <p class="muted">Aqui não aparece “rush” ou “turtle” porque esses nomes não são impostos. O relatório descreve o que a IA realmente fez: distribuição de reforços, funções compradas, ouro retido, troca de frente e quantidade de adaptações.</p>
+  <div id="strategyResults" class="muted">Rode uma bateria para observar as políticas.</div>
+</section>
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
-  <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3.3</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
-  <p class="muted">O banco atual usa os atributos v3.3, a nova pressão de onda dos minions e a defesa auxiliar por torretas.</p>
-  <p id="jsonStatus" class="muted">JSON Frontline pode ser exportado e importado novamente; confira o ruleset antes de substituir o banco atual.</p>
+  <div class="titleBlock"><div><span class="eyebrow">BANCO ESTRATÉGICO</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
+  <p class="muted">O JSON também guarda os perfis de estratégia observados na bateria mais recente. Bancos anteriores ficam arquivados porque o simulador mudou de modelo.</p>
+  <p id="jsonStatus" class="muted">Sem limite fixo de duração: histogramas de tempo crescem conforme necessário.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
   <div id="durationLifetime" class="bulkSummary"></div>
-  <div id="unitLifetime" class="muted">Banco ainda vazio.</div>
+  <div id="unitLifetime" class="muted">Banco estratégico ainda vazio.</div>
 </section>
-<section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As 12 baterias mais recentes ficam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria salva.</div></section>
+<section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As baterias recentes continuam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria salva.</div></section>
 </div>
 <script src="factions-v3.js"></script>
 <script src="minion-speed-v1.js"></script>
@@ -51,6 +56,7 @@
 <script src="balance-map-v4.js"></script>
 <script src="balance-minion-wave-v2.js"></script>
 <script src="balance-turrets-v1.js"></script>
+<script src="balance-strategy-v1.js"></script>
 <script src="balance-import.js"></script>
 </body>
 </html>
