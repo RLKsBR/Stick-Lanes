@@ -2,10 +2,13 @@
 const mapScript=document.createElement('script');
 mapScript.src='map-sci-fi-v4.js';
 mapScript.onload=()=>{
+  const assetScript=document.createElement('script');
+  assetScript.src='map-assets-v4.js';
+  document.head.appendChild(assetScript);
   const pill=document.querySelector('.statusPill');
-  if(pill)pill.textContent='22.500 • mapa sci-fi • 3×3 sub-lanes';
+  if(pill)pill.textContent='22.500 • mapa sci-fi • assets vetoriais';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Rotas superior e inferior são mais longas e flanqueadoras. A central é mais curta, mas os bastiões têm muito mais vida, alcance e resistência.';
+  if(cam)cam.textContent='Rotas superior e inferior são mais longas e flanqueadoras. A central é mais curta, mas os bastiões têm muito mais vida, alcance e resistência. Movimento global +70%.';
 };
 document.head.appendChild(mapScript);
 
