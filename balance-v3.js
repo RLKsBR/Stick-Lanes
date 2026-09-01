@@ -120,15 +120,25 @@ function allocateStructure(lane,side,dmg){
 function towerRetaliation(defender,lane,attLane,dt){
  let ti=towerIndex(defender,lane);if(ti<0)return;let dps=[20/1.6,25/1.5,30/1.4,36/1.3][ti];reduceLane(attLane,dps*dt*.13)
 }
+const TACTICAL_ORDER_EFFECTS={
+ base:{outgoing:.72,incoming:.64,structure:0,requiresMinion:false},
+ behind:{outgoing:.86,incoming:.75,structure:0,requiresMinion:false},
+ ahead:{outgoing:.96,incoming:.90,structure:.45,requiresMinion:true},
+ advance:{outgoing:1,incoming:1,structure:1,requiresMinion:true},
+ attack:{outgoing:1.15,incoming:1.12,structure:1.08,requiresMinion:false}
+};
+function tacticalOrderEffect(lane){return TACTICAL_ORDER_EFFECTS[lane.order]||TACTICAL_ORDER_EFFECTS.advance}
+function canPressureStructure(lane,effect){return effect.structure>0&&(!effect.requiresMinion||lane.minion>.01)}
 function fightLane(A,B,sideA,sideB,lane,dt,t){
+ let aOrder=tacticalOrderEffect(A),bOrder=tacticalOrderEffect(B);
  let aEff=A.army+A.minion*counterMult(A,B),bEff=B.army+B.minion*counterMult(B,A);
- let lossA=bEff*dt*.0105,lossB=aEff*dt*.0105;reduceLane(A,lossA);reduceLane(B,lossB);
+ let lossA=bEff*bOrder.outgoing*aOrder.incoming*dt*.0105,lossB=aEff*aOrder.outgoing*bOrder.incoming*dt*.0105;reduceLane(A,lossA);reduceLane(B,lossB);
  for(let [k,p] of Object.entries(A.unitShare)){let m=sideA.metrics[k]||(sideA.metrics[k]={spawns:0,impact:0,structure:0});m.impact+=bEff?lossB*(p/Math.max(1,A.army)):0}
  for(let [k,p] of Object.entries(B.unitShare)){let m=sideB.metrics[k]||(sideB.metrics[k]={spawns:0,impact:0,structure:0});m.impact+=aEff?lossA*(p/Math.max(1,B.army)):0}
  aEff=A.army+A.minion*counterMult(A,B);bEff=B.army+B.minion*counterMult(B,A);
  let pace=t<480?.60:t<720?.78:1;
- if(aEff>bEff*1.15){let siegeA=A.army+A.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeA-bEff*.8)*dt*.0065*pace;applyStructureDamage(sideA,sideB,lane,pressure);towerRetaliation(sideB,lane,A,dt)}
- else if(bEff>aEff*1.15){let siegeB=B.army+B.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeB-aEff*.8)*dt*.0065*pace;applyStructureDamage(sideB,sideA,lane,pressure);towerRetaliation(sideA,lane,B,dt)}
+ if(aEff>bEff*1.15&&canPressureStructure(A,aOrder)){let siegeA=A.army+A.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeA-bEff*.8)*dt*.0065*pace*aOrder.structure;applyStructureDamage(sideA,sideB,lane,pressure);towerRetaliation(sideB,lane,A,dt)}
+ else if(bEff>aEff*1.15&&canPressureStructure(B,bOrder)){let siegeB=B.army+B.minion*SL_COMBAT_RULES.siege.minionStructureDamage,pressure=Math.max(0,siegeB-aEff*.8)*dt*.0065*pace*bOrder.structure;applyStructureDamage(sideB,sideA,lane,pressure);towerRetaliation(sideA,lane,B,dt)}
 }
 function scoreSide(A,B){
  let s=A.base-B.base;for(let l=0;l<3;l++){s+=(A.towers[l].reduce((a,b)=>a+b,0)-B.towers[l].reduce((a,b)=>a+b,0))*.45;s+=(A.lanes[l].army+A.lanes[l].minion-B.lanes[l].army-B.lanes[l].minion)*.25}return s
@@ -173,15 +183,16 @@ function durationHTML(d){
  let truth=d.timedOutMatches?`<span class="warning">média total ≥ ${clock(observed)} (há partidas truncadas)</span>`:`<span class="good">média real ${clock(observed)}</span>`;
  return `${truth} <span class="badge">concluídas ${pct(d.completedMatches,n)}</span> <span class="badge">média das concluídas ${clock(completedMean)}</span> <span class="badge">P50 ${quantileClock(d,.5)}</span> <span class="badge">P90 ${quantileClock(d,.9)}</span> <span class="badge ${timeoutRate?'warning':''}">limite de 90 min ${pct(d.timedOutMatches,n)}</span>`
 }
-function saveDatabase(stats,matches,durations){
+function saveDatabase(stats,matches,durations,meta={}){
  let db=readJSON(DB_KEY,{version:2,ruleset:SL_RULESET_VERSION,batches:0,matches:0,duration:blankDurations(),units:{},updatedAt:0});db.batches++;db.matches+=matches;db.updatedAt=Date.now();
+ db.lastBatch={...meta,matches,updatedAt:db.updatedAt};
  db.duration=mergeDurations(db.duration||blankDurations(),durations);
  for(let x of Object.values(stats)){let g=db.units[x.key]||(db.units[x.key]={...blankUnit(x),name:x.name,fac:x.fac});for(let k of ['appear','wins','losses','draws','active','activeWins','activeLosses','activeDraws','spawns','impact','structure'])g[k]+=x[k]||0}
  localStorage.setItem(DB_KEY,JSON.stringify(db));return db
 }
-function snapshot(cands,stats,total,durations){
+function snapshot(cands,stats,total,durations,meta={}){
  let top=[...cands].filter(c=>c.games).sort((a,b)=>b.score-a.score).slice(0,10);
- let snap={id:String(Date.now()),savedAt:Date.now(),ruleset:SL_RULESET_VERSION,matches:total,candidates:cands.length,duration:durations,
+ let snap={id:String(Date.now()),savedAt:Date.now(),ruleset:SL_RULESET_VERSION,matches:total,candidates:cands.length,duration:durations,meta,
  top:top.map(c=>({pair:c.pair,units:c.units.map(u=>({key:u.key,name:u.name,fac:u.fac})),games:c.games,wins:c.wins,losses:c.losses,draws:c.draws,avgDuration:c.duration/Math.max(1,c.games)})),
  units:Object.values(stats)};
  let h=readJSON(HISTORY_KEY,[]);h.unshift(snap);localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(0,12)));return snap
@@ -212,7 +223,7 @@ function renderDatabase(){
 }
 function renderHistory(){
  let h=readJSON(HISTORY_KEY,[]),el=$('#labHistory');if(!h.length){el.textContent='Nenhuma bateria v3 salva.';return}
- el.innerHTML=h.map(x=>`<div class="compCard"><strong>${x.matches.toLocaleString('pt-BR')} partidas</strong><div class="historyMeta">${new Date(x.savedAt).toLocaleString()} • ${x.candidates} candidatas • ${x.ruleset}</div></div>`).join('')
+ el.innerHTML=h.map(x=>`<div class="compCard"><strong>${x.matches.toLocaleString('pt-BR')} partidas</strong><div class="historyMeta">${new Date(x.savedAt).toLocaleString()} • ${x.candidates} candidatas${x.meta?.seed?` • base ${x.meta.seed}`:''}${x.meta?.seedCount?` • ${x.meta.seedCount} sementes`:''} • ${x.ruleset}</div></div>`).join('')
 }
 async function run(){
  let total=Number($('#matchCount').value),n=Number($('#candidateCount').value),cands=generateCandidates(n),stats={},durations=blankDurations(),bar=$('#progressBar'),st=$('#labStatus'),btn=$('#runLab');

@@ -13,7 +13,7 @@
 <div id="app" class="labPage">
 <section class="panel">
   <div class="titleBlock"><div><span class="eyebrow">HEADLESS ESTRATÉGICO • SEM LIMITE FIXO</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">A simulação não desenha a batalha, mas agora as IAs tomam decisões durante a partida. Elas observam ameaça, oportunidade, ouro, unidades disponíveis, pressão de minions e estado das estruturas. Não existem táticas nomeadas pré-programadas: os pesos mudam e os comportamentos são descritos depois.</p>
+  <p class="muted">A simulação não desenha a batalha, mas as IAs tomam decisões durante a partida. Elas observam ameaça, oportunidade, ouro, unidades disponíveis, pressão de minions e estado das estruturas para comprar tropas, escolher lanes e alternar entre Base, Atrás, Frente, Avançar e Atacar. Não existem estratégias fechadas pré-programadas: os pesos mudam e os comportamentos são descritos depois.</p>
   <div class="labControls">
     <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
     <div id="fixedFactionControls" class="fixedFactionControls" hidden>
@@ -21,12 +21,14 @@
       <label>Facção 2 <select id="simF2"></select></label>
       <button id="randomizeSimFactions" class="secondary">Sortear par</button>
     </div>
-    <label>Partidas <select id="matchCount"><option>100</option><option>250</option><option selected>500</option><option>1000</option><option>5000</option><option>10000</option><option>20000</option><option>50000</option></select></label>
+    <label>Partidas por semente <select id="matchCount"><option>100</option><option>250</option><option selected>500</option><option>1000</option><option>5000</option><option>10000</option><option>20000</option><option>50000</option></select></label>
     <label>Candidatas <select id="candidateCount"><option>48</option><option selected>80</option><option>120</option><option>240</option><option>320</option></select></label>
+    <label>Semente <input id="simSeed" type="number" value="20260901" min="1" step="1"></label>
+    <label>Repetições <select id="seedCount"><option>1</option><option selected>3</option><option>5</option></select></label>
     <button id="runLab" class="primary">Rodar simulação estratégica</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para 500 partidas estratégicas aceleradas.</p>
+  <p id="labStatus" class="muted">Pronto para 3 sementes × 500 partidas estratégicas aceleradas.</p>
   <div id="durationCurrent" class="bulkSummary"><span class="muted">Não existe corte em 90 minutos. Uma partida continua enquanto houver dano estrutural; 2 horas simuladas sem qualquer dano a torre ou base são tratadas como impasse técnico.</span></div>
 </section>
 <div class="labGrid">
@@ -35,7 +37,7 @@
 </div>
 <section class="panel">
   <div class="titleBlock"><div><span class="eyebrow">COMPORTAMENTO OBSERVADO</span><h2>Estratégias emergentes</h2></div></div>
-  <p class="muted">Aqui não aparece “rush” ou “turtle” porque esses nomes não são impostos. O relatório descreve o que a IA realmente fez: distribuição de reforços, funções compradas, ouro retido, troca de frente e quantidade de adaptações.</p>
+  <p class="muted">Aqui não aparece “rush” ou “turtle” porque esses nomes não são impostos. O relatório descreve o que a IA realmente fez: distribuição de reforços, ordens, funções compradas, ouro retido, troca de frente e quantidade de adaptações. A semente permite repetir exatamente a mesma bateria.</p>
   <div id="strategyResults" class="muted">Rode uma bateria para observar as políticas.</div>
 </section>
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>

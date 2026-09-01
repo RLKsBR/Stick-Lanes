@@ -42,6 +42,7 @@ function drawTowerRange(s){
  ctx.fillStyle=color;ctx.globalAlpha=.9;ctx.font='700 15px system-ui';ctx.textAlign='center';ctx.fillText(s.range+'u',x,y-r+24);ctx.restore()
 }
 function drawTower(s,t){
+ if(s.auxiliary)return drawAuxTurret(s,t);
  if(s.dead)return;let x=s.x,y=laneYAt(s.lane,s.x),tier=s.visualTier||1,p=s.side===1?['#425a72','#91adc5','#293a4d']:['#75434b','#b47a81','#4c2a31'];
  drawTowerRange(s);
  ctx.save();ctx.translate(x,y);
@@ -63,6 +64,17 @@ function drawTower(s,t){
  ctx.fillStyle=s.fortified?'rgba(18,33,48,.88)':'rgba(72,39,22,.9)';roundRect(-58,52,116,24,6);ctx.fill();
  ctx.fillStyle=s.fortified?'#bfe6ff':'#ffd19a';ctx.font='700 10px system-ui';ctx.textAlign='center';ctx.fillText(s.fortified?'FORTIFICADA':'CERCO ABERTO',0,68);
  ctx.fillStyle='rgba(10,11,13,.78)';roundRect(-58,79,116,21,6);ctx.fill();ctx.fillStyle='#eee7d7';ctx.font='11px system-ui';ctx.fillText(s.label+' • '+s.range+'u',0,94);ctx.restore()
+}
+function drawAuxTurret(s,t){
+ if(s.dead)return;let x=s.x,y=laneYAt(s.lane,s.x),p=s.side===1?['#3d566e','#8db4d0','#253747']:['#704048','#b77a82','#48272d'];
+ drawTowerRange(s);ctx.save();ctx.translate(x,y);
+ ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(0,35,42,12,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=p[2];roundRect(-34,-3,68,38,8);ctx.fill();ctx.fillStyle=p[0];roundRect(-25,-29,50,31,9);ctx.fill();
+ ctx.fillStyle=p[1];ctx.beginPath();ctx.arc(0,-29,13,0,Math.PI*2);ctx.fill();
+ ctx.save();ctx.scale(s.side,1);ctx.strokeStyle='#171c22';ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(4,-30);ctx.lineTo(45,-34);ctx.stroke();ctx.strokeStyle=p[1];ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(5,-32);ctx.lineTo(45,-36);ctx.stroke();ctx.restore();
+ if(s.fortified){ctx.strokeStyle=s.side===1?'rgba(124,200,255,.7)':'rgba(255,154,160,.7)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-8,39+Math.sin(t*3+s.x)*2,Math.PI,Math.PI*2);ctx.stroke()}
+ let hp=Math.max(0,s.hp/s.maxHp);ctx.fillStyle='#0b0c0e';roundRect(-34,-55,68,8,4);ctx.fill();ctx.fillStyle=hp>.45?'#46ae69':hp>.2?'#e2ad45':'#d95a5a';roundRect(-34,-55,68*hp,8,4);ctx.fill();
+ ctx.fillStyle='rgba(10,11,13,.78)';roundRect(-39,45,78,18,5);ctx.fill();ctx.fillStyle='#eee7d7';ctx.font='700 9px system-ui';ctx.textAlign='center';ctx.fillText('TORRETA • '+s.range+'u',0,57);ctx.restore()
 }
 function drawFactionAura(u,t,meta){
  let p=meta.palette,m=meta.motif,pulse=.5+.5*Math.sin(t*3+u.anim);
