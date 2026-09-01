@@ -13,6 +13,16 @@ mapScript.onload=()=>{
       layoutScript.onload=()=>{
         const movementScript=document.createElement('script');
         movementScript.src='movement-v6.js';
+        movementScript.onload=()=>{
+          const minionSpeed=document.createElement('script');
+          minionSpeed.src='minion-speed-v1.js';
+          minionSpeed.onload=()=>{
+            const minionWave=document.createElement('script');
+            minionWave.src='minion-wave-v2.js';
+            document.head.appendChild(minionWave);
+          };
+          document.head.appendChild(minionSpeed);
+        };
         document.head.appendChild(movementScript);
       };
       document.head.appendChild(layoutScript);
@@ -23,7 +33,7 @@ mapScript.onload=()=>{
   const pill=document.querySelector('.statusPill');
   if(pill)pill.textContent='22.500 • mapa 2D e meio • movimento 6×';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L. Movimento global 6×.';
+  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; rota inferior em L. Minions: 1 tanque, 2 lutadores e 3 à distância por lane, todos na mesma velocidade.';
 };
 document.head.appendChild(mapScript);
 
