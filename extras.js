@@ -19,6 +19,11 @@ mapScript.onload=()=>{
           minionSpeed.onload=()=>{
             const minionWave=document.createElement('script');
             minionWave.src='minion-wave-v2.js';
+            minionWave.onload=()=>{
+              const turretDefense=document.createElement('script');
+              turretDefense.src='turret-defense-v1.js';
+              document.head.appendChild(turretDefense);
+            };
             document.head.appendChild(minionWave);
           };
           document.head.appendChild(minionSpeed);
@@ -33,7 +38,7 @@ mapScript.onload=()=>{
   const pill=document.querySelector('.statusPill');
   if(pill)pill.textContent='22.500 • mapa 2D e meio • movimento 6×';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; rota inferior em L. Minions: 1 tanque, 2 lutadores e 3 à distância por lane, todos na mesma velocidade.';
+  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. Rota inferior em L. Entre torres principais há duas torretas auxiliares, mas ficam janelas deliberadas de avanço.';
 };
 document.head.appendChild(mapScript);
 
