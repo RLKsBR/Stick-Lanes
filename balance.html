@@ -35,8 +35,9 @@
 </div>
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
-  <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3</span><h2>Acumulado por unidade</h2></div><div><button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button></div></div>
+  <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
   <p class="muted">Separado do baseline antigo. Guarda aparições, partidas ativas, vitórias, derrotas, empates, spawns, impacto, dano estrutural e distribuição de duração.</p>
+  <p id="jsonStatus" class="muted">JSON Frontline v3 pode ser exportado e importado novamente. Formatos antigos são arquivados separadamente para não contaminar as métricas.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
   <div id="durationLifetime" class="bulkSummary"></div>
   <div id="unitLifetime" class="muted">Banco novo ainda vazio.</div>
@@ -45,5 +46,6 @@
 </div>
 <script src="factions-v3.js"></script>
 <script src="balance-v3.js"></script>
+<script src="balance-import.js"></script>
 </body>
 </html>
