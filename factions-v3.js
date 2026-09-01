@@ -14,6 +14,21 @@ function unit(fac,name,role,i){
 }
 const DATA={};for(const [fac,m] of Object.entries(META))DATA[fac]={palette:m.p,motif:m.m,passive:{id:m.pass[0],name:m.pass[1],desc:m.pass[2]},counter:m.c,minions:{tank:m.min[0],fighter:m.min[1],ranged:m.min[2]},units:m.u.map(([n,r],i)=>unit(fac,n,r,i))};
 window.SL_FACTIONS=DATA;window.SL_FACTION_ORDER=Object.keys(DATA);window.SL_COUNTERS=Object.fromEntries(Object.entries(DATA).map(([k,v])=>[k,v.counter]));
-window.SL_MINION_PROFILES={tank:{role:'tank',hp:105,def:72,atk:22,speed:4,range:1.1,rate:1.55},fighter:{role:'fighter',hp:68,def:32,atk:38,speed:5.4,range:1.2,rate:1.15},ranged:{role:'ranged',hp:48,def:18,atk:34,speed:4.8,range:8.5,rate:1.4}};
-window.SL_RULESET_VERSION='frontline-v3';
+window.SL_COMBAT_RULES={
+ tower:{
+  fortress:{label:'Fortaleza',hp:5400,atk:36,range:36,rate:1.30,visualTier:4},
+  rear:{label:'Traseira',hp:4000,atk:30,range:32,rate:1.40,visualTier:3},
+  central:{label:'Central',hp:3000,atk:25,range:30,rate:1.50,visualTier:2},
+  advanced:{label:'Avançada',hp:2200,atk:20,range:30,rate:1.60,visualTier:1}
+ },
+ siege:{fortifiedDamageTaken:.645,minionStructureDamage:.35,breachRadius:7,breachGrace:2},
+ minionRewards:{tank:14,fighter:9,ranged:11},
+ mentalistGuard:{cooldown:12,durationMultiplier:.65}
+};
+window.SL_MINION_PROFILES={
+ tank:{role:'tank',hp:140,def:90,atk:22,speed:4,range:1.1,rate:1.55},
+ fighter:{role:'fighter',hp:90,def:40,atk:38,speed:5.4,range:1.2,rate:1.15},
+ ranged:{role:'ranged',hp:60,def:20,atk:34,speed:4.8,range:8.5,rate:1.4}
+};
+window.SL_RULESET_VERSION='frontline-v3.1-siege';
 })();
