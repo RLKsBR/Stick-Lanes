@@ -6,7 +6,7 @@
 <title>Stick Lanes — Laboratório</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
+.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}.bulkSummary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.bulkSummary .badge{font-size:.82rem}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -15,22 +15,29 @@
   <div class="titleBlock"><div><span class="eyebrow">LABORATÓRIO</span><h1>Balanceamento automático</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
   <p class="muted">Robôs montam composições de 2 facções e 8 unidades, jogam sem renderização e aceleram o tempo virtual em 10×. O objetivo é encontrar composições dominantes e unidades fora da curva.</p>
   <div class="labControls">
-    <label>Partidas <select id="matchCount"><option>200</option><option selected>500</option><option>1000</option><option>2000</option></select></label>
-    <label>Candidatas <select id="candidateCount"><option>16</option><option selected>24</option><option>32</option></select></label>
-    <button id="runLab" class="primary">Rodar laboratório</button>
+    <label>Partidas <select id="matchCount"><option>500</option><option>1000</option><option>2000</option><option selected>5000</option><option>10000</option></select></label>
+    <label>Candidatas <select id="candidateCount"><option>16</option><option>24</option><option selected>32</option><option>48</option><option>64</option></select></label>
+    <button id="runLab" class="primary">Rodar 5.000 simulações</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para simular.</p>
+  <p id="labStatus" class="muted">Pronto para simular uma bateria de 5.000 partidas.</p>
 </section>
 
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps"></div></section>
 <section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">Rode as simulações primeiro.</div></section>
 </div>
-<section class="panel labResults"><h2>Unidades</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
+<section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
+<section class="panel labResults">
+  <div class="titleBlock"><div><span class="eyebrow">BANCO ACUMULADO</span><h2>Histórico por unidade</h2></div><button id="clearUnitBalance" class="secondary">Zerar banco</button></div>
+  <p class="muted">Soma todas as baterias executadas neste navegador: presença, vitórias, derrotas, empates, spawns e desempenho. Ideal para comparar versões do balanceamento.</p>
+  <div id="bulkSummary" class="bulkSummary"></div>
+  <div id="unitLifetime" class="muted">Nenhuma bateria acumulada ainda.</div>
+</section>
 <section class="panel"><div class="titleBlock"><div><span class="eyebrow">HISTÓRICO LOCAL</span><h2>Resultados salvos</h2></div><button id="clearLabHistory" class="secondary">Limpar histórico</button></div><p class="muted">Cada laboratório concluído é salvo automaticamente neste navegador.</p><div id="labHistory" class="muted">Nenhum resultado salvo ainda.</div></section>
 </div>
 <script src="balance.js"></script>
 <script src="balance-history.js"></script>
+<script src="balance-bulk.js"></script>
 </body>
 </html>
