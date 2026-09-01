@@ -43,8 +43,9 @@ function addUnit(side,lane,u){
  let m=side.metrics[u.key]||(side.metrics[u.key]={spawns:0,impact:0,structure:0});m.spawns++
 }
 function chooseSpawn(side,t){
- let avail=side.comp.units.filter(u=>side.gold>=u.cost&&t>=(side.ready[u.key]||0));if(!avail.length)return null;
- let unused=avail.filter(u=>(side.usage[u.key]||0)===0);if(unused.length)avail=unused;
+ let unusedAll=side.comp.units.filter(u=>(side.usage[u.key]||0)===0);
+ let source=unusedAll.length?unusedAll:side.comp.units;
+ let avail=source.filter(u=>side.gold>=u.cost&&t>=(side.ready[u.key]||0));if(!avail.length)return null;
  avail.sort((a,b)=>value(b)*(.86+Math.random()*.28)-value(a)*(.86+Math.random()*.28));return avail[0]
 }
 function spawnStep(me,foe,t){
