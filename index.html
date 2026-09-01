@@ -8,16 +8,28 @@
 </head>
 <body>
 <div id="app">
-  <section id="setup" class="panel setupPanel">
+  <section id="mainMenu" class="panel mainMenu">
+    <div class="menuHero">
+      <span class="eyebrow">FRONTLINE V3.1</span>
+      <h1>Stick Lanes</h1>
+      <p class="muted">Escolha como entrar na guerra.</p>
+    </div>
+    <div class="menuChoices">
+      <button id="menuPlay" class="menuChoice primary"><b>Jogar</b><small>Monte duas facções e escolha suas oito tropas.</small></button>
+      <button id="menuRobots" class="menuChoice secondary"><b>Robô × Robô</b><small>Facções e tropas aleatórias em Simulação assistida.</small></button>
+      <a href="balance.html" class="menuChoice secondary"><b>Simulação</b><small>Milhares de partidas sem renderização, com escolha fixa ou aleatória.</small></a>
+    </div>
+  </section>
+
+  <section id="setup" class="panel setupPanel" hidden>
     <div class="titleBlock">
-      <div><span class="eyebrow">FRONTLINE V3</span><h1>Stick Lanes</h1></div>
-      <span class="statusPill">22.500 • 3×3 sub-lanes • minions</span>
+      <div><span class="eyebrow">MONTAGEM</span><h1>Preparar exército</h1></div>
+      <div class="titleActions"><span class="statusPill">22.500 • 3×3 sub-lanes • minions</span><button id="backMenu" class="secondary">← Menu</button></div>
     </div>
     <p class="muted">26 facções • 2 facções por exército • 8 unidades compradas • 4 torres por lane • ondas automáticas de minions</p>
     <div class="row factionRow">
       <label>Facção 1 <select id="f1"></select></label>
       <label>Facção 2 <select id="f2"></select></label>
-      <label>Modo <select id="gameMode"><option value="pve">Jogador × IA</option><option value="robot">Simulação assistida — Robô × Robô</option></select></label>
     </div>
     <div id="factionIdentity" class="panel compactPanel muted"></div>
 

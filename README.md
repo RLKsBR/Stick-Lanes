@@ -9,6 +9,12 @@ Protótipo de estratégia em tempo real para navegador, com exércitos formados 
 
 O GitHub Pages publica a branch `main` a partir da raiz do repositório. Depois de um commit, a atualização pode levar alguns minutos para aparecer.
 
+O menu inicial separa três fluxos:
+
+- **Jogar** — montagem manual de duas facções e oito tropas contra a IA.
+- **Robô × Robô** — Simulação assistida com as facções dos dois lados sorteadas; cada robô escolhe seu próprio elenco de oito tropas. Velocidades 1×, 3×, 10× e 20×.
+- **Simulação** — laboratório sem renderização, com facções aleatórias ou um par fixo escolhido pelo usuário.
+
 ## Frontline v3
 
 - Mundo horizontal com largura virtual de **22.500**.
@@ -88,11 +94,11 @@ As ordens atuais por lane são:
 
 - Base
 - Atrás da torre
-- Na torre
-- À frente
+- À frente da torre
 - Avançar
+- Atacar
 
-Unidades atacam tropas, minions, torres e bases normalmente. Elas não são sacrificadas automaticamente ao chegar na base inimiga.
+**Avançar** mantém as tropas junto dos minions e prioriza a limpeza da onda. **Atacar** avança sem depender de minions e prioriza tropas inimigas, mas interrompe perseguições que tentem puxar a unidade para além da torre atual.
 
 ## Laboratório de balanceamento
 
@@ -102,7 +108,9 @@ Estado atual:
 
 - **10.000 partidas** como padrão de uma bateria.
 - Opções maiores disponíveis no próprio laboratório.
-- Composições são geradas e testadas automaticamente.
+- As facções podem ser sorteadas automaticamente para cada composição ou fixadas pelo usuário.
+- Depois de receber as facções, cada robô escolhe e testa automaticamente seu elenco de oito tropas.
+- O robô economiza ouro até colocar todas as oito tropas escolhidas em campo.
 - O relatório mede vitórias, derrotas, empates, spawns, dano, dano estrutural e impacto das unidades.
 - O win rate principal de uma unidade considera jogos em que ela **realmente entrou em campo**, evitando atribuir desempenho a unidades que ficaram apenas no loadout.
 - Existe um banco acumulado local por unidade.
