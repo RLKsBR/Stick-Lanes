@@ -5,7 +5,7 @@
 
 var FACTIONS=Object.fromEntries(Object.entries(SL_FACTIONS).map(([k,v])=>[k,v.units]));
 var $=s=>document.querySelector(s);
-var setup=$('#setup'),gameUI=$('#gameUI'),f1=$('#f1'),f2=$('#f2'),pool=$('#pool'),count=$('#count'),
+var mainMenu=$('#mainMenu'),setup=$('#setup'),gameUI=$('#gameUI'),f1=$('#f1'),f2=$('#f2'),pool=$('#pool'),count=$('#count'),
     start=$('#start'),canvas=$('#game'),ctx=canvas.getContext('2d');
 var chosen=[],loadout=[],gameMode='pve';
 
@@ -84,9 +84,22 @@ function renderPool(){
 f1.onchange=f2.onchange=renderPool;renderPool();
 
 function byKey(k){let[fac,n]=k.split('|');return{fac,u:FACTIONS[fac].find(x=>x.name===n)}}
+function randomFactionPair(exclude=[]){
+ let available=SL_FACTION_ORDER.filter(f=>!exclude.includes(f));if(available.length<2)available=[...SL_FACTION_ORDER];
+ return available.sort(()=>Math.random()-.5).slice(0,2)
+}
+function launchBattle(mode,pair,deck){
+ gameMode=mode;f1.value=pair[0];f2.value=pair[1];loadout=deck;
+ mainMenu.hidden=true;setup.hidden=true;gameUI.hidden=false;buildUI();reset()
+}
+$('#menuPlay').onclick=()=>{mainMenu.hidden=true;setup.hidden=false;gameMode='pve';renderPool()};
+$('#menuRobots').onclick=()=>{
+ let pair=randomFactionPair(),deck=buildAIDeck(pair);launchBattle('robot',pair,deck)
+};
+$('#backMenu').onclick=()=>location.reload();
 start.onclick=()=>{
  if(chosen.length!==8)return;
- loadout=chosen.map(byKey);gameMode=$('#gameMode')?.value||'pve';setup.hidden=true;gameUI.hidden=false;buildUI();reset();
+ launchBattle('pve',[f1.value,f2.value],chosen.map(byKey))
 };
 $('#restart').onclick=()=>location.reload();
 
@@ -144,7 +157,7 @@ function reset(){
  Object.keys(spawnCd).forEach(k=>delete spawnCd[k]);
  for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0}
  makeStructures();
- enemyFactions=[...SL_FACTION_ORDER].sort(()=>Math.random()-.5).slice(0,2);
+ enemyFactions=randomFactionPair([f1.value,f2.value]);
  enemyLoadout=buildAIDeck(enemyFactions);
  sideFactions={1:[f1.value,f2.value],'-1':enemyFactions};
  running=true;last=performance.now();requestAnimationFrame(loop)
