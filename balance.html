@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stick Lanes — Laboratório</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app" class="labPage">
+<section class="panel">
+  <div class="titleBlock"><div><span class="eyebrow">LABORATÓRIO</span><h1>Balanceamento automático</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">Robôs montam composições de 2 facções e 8 unidades, jogam sem renderização e aceleram o tempo virtual em 10×. O objetivo é encontrar composições dominantes e unidades fora da curva.</p>
+  <div class="labControls">
+    <label>Partidas <select id="matchCount"><option>200</option><option selected>500</option><option>1000</option><option>2000</option></select></label>
+    <label>Candidatas <select id="candidateCount"><option>16</option><option selected>24</option><option>32</option></select></label>
+    <button id="runLab" class="primary">Rodar laboratório</button>
+  </div>
+  <div class="progress"><div id="progressBar"></div></div>
+  <p id="labStatus" class="muted">Pronto para simular.</p>
+</section>
+
+<div class="labGrid">
+<section class="panel"><h2>Melhores composições</h2><div id="bestComps"></div></section>
+<section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">Rode as simulações primeiro.</div></section>
+</div>
+<section class="panel labResults"><h2>Unidades</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
+</div>
+<script src="balance.js"></script>
+</body>
+</html>
