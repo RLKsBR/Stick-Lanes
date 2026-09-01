@@ -24,7 +24,10 @@ const BASE_HP=6000,WAVE_INTERVAL=22;
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
-let unitSeq=0,showTowerRanges=false,unitIndex={1:[[],[],[]],'-1':[[],[],[]]};
+const CELL_SIZE=520;
+let unitSeq=0,showTowerRanges=false,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
+    unitCells={1:[new Map(),new Map(),new Map()],'-1':[new Map(),new Map(),new Map()]},
+    waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
 const aiSpawnCd={1:{},'-1':{}},aiUse={1:{},'-1':{}},aiNextThink={1:0,'-1':0};
 
@@ -268,15 +271,26 @@ function reward(v,killer){
 function sameFront(a,b){return a.lane===b.lane}
 function rebuildUnitIndex(){
  unitIndex={1:[[],[],[]],'-1':[[],[],[]]};
- for(const u of units)if(!u.dead)unitIndex[u.side][u.lane].push(u)
+ unitCells={1:[new Map(),new Map(),new Map()],'-1':[new Map(),new Map(),new Map()]};
+ waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
+ for(const u of units)if(!u.dead){
+   unitIndex[u.side][u.lane].push(u);
+   let cell=Math.floor(u.x/CELL_SIZE),map=unitCells[u.side][u.lane];if(!map.has(cell))map.set(cell,[]);map.get(cell).push(u);
+   if(u.minion){let old=waveFrontIndex[u.side][u.lane];if(!old||(u.side===1?u.x>old.x:u.x<old.x))waveFrontIndex[u.side][u.lane]=u}
+ }
 }
 function laneSide(side,lane){return unitIndex[side][lane]}
+function nearbyUnits(side,lane,x,r){
+ let map=unitCells[side][lane],out=[],a=Math.floor((x-r)/CELL_SIZE),b=Math.floor((x+r)/CELL_SIZE);
+ for(let cell=a;cell<=b;cell++){let list=map.get(cell);if(list)out.push(...list)}
+ return out
+}
 function closestUnit(from,u,maxDist,pred=()=>true){
  let best=null,bestD=maxDist;
  for(const v of from){if(v.dead||!pred(v))continue;let d=dist(u,v);if(d<=bestD){best=v;bestD=d}}
  return best
 }
-function nearestEnemy(u,range){return closestUnit(laneSide(-u.side,u.lane),u,range*PX)}
+function nearestEnemy(u,range){let r=range*PX;return closestUnit(nearbyUnits(-u.side,u.lane,u.x,r),u,r)}
 function nextStructure(u){
  let a=aliveTowers(-u.side,u.lane).filter(s=>u.side===1?s.x>=u.x-10:s.x<=u.x+10);
  return a.length?a.sort((x,y)=>Math.abs(x.x-u.x)-Math.abs(y.x-u.x))[0]:{kind:'base',side:-u.side,lane:u.lane,x:BASE_X[-u.side]}
@@ -288,7 +302,7 @@ function defX(u){
  if(o==='behind')return r.x-u.side*190;if(o==='ahead')return r.x+u.side*190;return r.x-u.side*45
 }
 function enemyCandidates(u,range,pred=()=>true){
- return laneSide(-u.side,u.lane).filter(v=>!v.dead&&pred(v)&&dist(u,v)<=range*PX).sort((a,b)=>dist(u,a)-dist(u,b))
+ let r=range*PX;return nearbyUnits(-u.side,u.lane,u.x,r).filter(v=>!v.dead&&pred(v)&&dist(u,v)<=r).sort((a,b)=>dist(u,a)-dist(u,b))
 }
 function chaseAllowed(u,v,s){
  if(!v||s.kind==='base')return !!v;
@@ -307,19 +321,19 @@ function orderedEnemy(u,range,order,s){
  return enemyCandidates(u,range)[0]
 }
 function escortX(u){
- let wave=laneSide(u.side,u.lane).filter(v=>!v.dead&&v.minion);
- if(!wave.length){
+ let front=waveFrontIndex[u.side][u.lane];
+ if(!front){
    let own=aliveTowers(u.side,u.lane);if(!own.length)return BASE_X[u.side]+u.side*220;
-   let front=own.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0];return front.x+u.side*190
+   let tower=own.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0];return tower.x+u.side*190
  }
- let front=wave.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0],gap=(u.role==='ranged'||u.role==='support'||u.role==='controller'||u.role==='siege')?190:75;
+ let gap=(u.role==='ranged'||u.role==='support'||u.role==='controller'||u.role==='siege')?190:75;
  return front.x-u.side*gap
 }
 function structureSupported(u,s){
  let sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),radius=COMBAT.siege.breachRadius*PX;
- return laneSide(u.side,u.lane).some(v=>!v.dead&&v.minion&&Math.hypot(v.x-s.x,yOf(v)-sy)<=radius)
+ return nearbyUnits(u.side,u.lane,s.x,radius).some(v=>!v.dead&&v.minion&&Math.hypot(v.x-s.x,yOf(v)-sy)<=radius)
 }
-function alliesNear(u,r=300){return laneSide(u.side,u.lane).filter(v=>!v.dead&&v!==u&&dist(u,v)<r).length}
+function alliesNear(u,r=300){return nearbyUnits(u.side,u.lane,u.x,r).filter(v=>!v.dead&&v!==u&&dist(u,v)<r).length}
 function attackRate(u){
  let m=1;if(u.fac==='Orcs'&&u.hp/u.maxHp<.4)m*=.82;
  if(u.fac==='Músicos'&&u.attackCount%4===3)m*=.7;
@@ -367,7 +381,7 @@ function structurePacing(){return matchTime<480?.68:matchTime<720?.84:1}
 function siegeMinionNear(s){
  if(s.kind!=='tower')return false;
  let radius=COMBAT.siege.breachRadius*PX,sy=laneYAt(s.lane,s.x);
- return laneSide(-s.side,s.lane).some(u=>!u.dead&&u.minion&&Math.hypot(u.x-s.x,yOf(u)-sy)<=radius)
+ return nearbyUnits(-s.side,s.lane,s.x,radius).some(u=>!u.dead&&u.minion&&Math.hypot(u.x-s.x,yOf(u)-sy)<=radius)
 }
 function towerDamageTaken(s,t){
  if(siegeMinionNear(s))s.breachUntil=t+COMBAT.siege.breachGrace;
@@ -446,7 +460,7 @@ function attack(a,b,t){
  if(a.fac==='Bestas Marinhas'||a.special.slow)b.slowUntil=Math.max(b.slowUntil,t+2.5);
  if(a.special.radiation)b.radiation=Math.min(.12,b.radiation+a.special.radiation);
  if(b.fac==='Cristalinos'&&a.hp>0){a.hp-=d*.08;if(a.hp<=0)killUnit(a,b,t)}
- if(a.special.splash||a.fac==='Elementais')laneSide(b.side,b.lane).filter(v=>v!==b&&!v.dead&&dist(b,v)<90).forEach(v=>{v.hp-=d*.10;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)});
+ if(a.special.splash||a.fac==='Elementais')nearbyUnits(b.side,b.lane,b.x,90).filter(v=>v!==b&&!v.dead&&dist(b,v)<90).forEach(v=>{v.hp-=d*.10;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)});
  if(a.fac==='Músicos'&&a.attackCount%4===3)units.filter(v=>!v.dead&&v.side===a.side&&v.lane===a.lane&&dist(a,v)<260).forEach(v=>v.musicUntil=Math.max(v.musicUntil,t+3));
  effects.push({type:'impact',x:b.x,y:yOf(b),t,color:attackColor(a)});
  if(a.range>4||a.role==='ranged'||a.role==='controller'||a.role==='support')effects.push({type:'beam',x1:a.x,y1:yOf(a)-18,x2:b.x,y2:yOf(b)-14,t,color:attackColor(a)});
@@ -458,7 +472,7 @@ function updateTowers(t){
    towerDamageTaken(s,t);
    if(t-s.lastAttack<s.rate)continue;
    let sy=laneYAt(s.lane,s.x),v=null,best=s.range*PX;
-   for(const u of laneSide(-s.side,s.lane)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}
+   for(const u of nearbyUnits(-s.side,s.lane,s.x,best)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}
    if(!v)continue;let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;
    if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);
    s.lastAttack=t;effects.push({type:'shot',x1:s.x,y1:sy-48,x2:v.x,y2:yOf(v)-10,t,side:s.side})
