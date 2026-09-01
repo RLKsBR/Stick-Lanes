@@ -166,10 +166,15 @@ function spawnUnit(side,lane,fac,u,opts={}){
    lastTargetId:null,lastTargetSwitch:-999,mentalGuardReadyAt:born,musicUntil:-999};
  applySpawnPassive(obj);units.push(obj);return obj;
 }
+function canSpawnUnit(side,u){
+ if(u.special.legend&&units.some(x=>!x.dead&&x.side===side&&x.special.legend))return false;
+ let cap=u.special.maxCopies||(u.special.unique?1:Infinity);
+ return units.filter(x=>!x.dead&&x.side===side&&x.name===u.name).length<cap
+}
 function spawnPlayer(i){
+ if(gameMode==='robot')return;
  let{fac,u}=loadout[i],now=performance.now()/1000,k='p'+i;
- if(gold<u.cost||now<(spawnCd[k]||0))return;
- if(u.special.unique&&units.some(x=>!x.dead&&x.side===1&&x.name===u.name))return;
+ if(gold<u.cost||now<(spawnCd[k]||0)||!canSpawnUnit(1,u))return;
  gold-=u.cost;spawnCd[k]=now+u.gen;spawnUnit(1,selectedLane,fac,u)
 }
 function unitValue(u){let dps=u.atk/Math.max(.45,u.rate),ehp=u.hp*(1+u.def/130);return Math.sqrt(dps*ehp)*(1+u.range*.018)/(Math.pow(u.cost,0.55)*(1+u.gen/220))}
@@ -193,7 +198,7 @@ function runSideAI(side,t){
  updateAIOrders(side);
  let ready=aiSpawnCd[side],usage=aiUse[side],available=sideRoster(side).filter(({fac,u})=>
    sideGold(side)>=u.cost&&t>=(ready[fac+'|'+u.name]||0)&&
-   (!u.special.unique||!units.some(x=>!x.dead&&x.side===side&&x.name===u.name))
+   canSpawnUnit(side,u)
  );
  if(!available.length)return;
  let scored=available.map(x=>{
@@ -275,6 +280,10 @@ function escortX(u){
  let front=wave.sort((a,b)=>u.side===1?b.x-a.x:a.x-b.x)[0],gap=(u.role==='ranged'||u.role==='support'||u.role==='controller'||u.role==='siege')?190:75;
  return front.x-u.side*gap
 }
+function structureSupported(u,s){
+ let sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),radius=COMBAT.siege.breachRadius*PX;
+ return units.some(v=>!v.dead&&v.minion&&v.side===u.side&&v.lane===u.lane&&Math.hypot(v.x-s.x,yOf(v)-sy)<=radius)
+}
 function alliesNear(u,r=300){return units.filter(v=>!v.dead&&v.side===u.side&&v!==u&&v.lane===u.lane&&dist(u,v)<r).length}
 function attackRate(u){
  let m=1;if(u.fac==='Orcs'&&u.hp/u.maxHp<.4)m*=.82;
@@ -313,7 +322,7 @@ function update(dt,t){
      if(sr){if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}}else move(u,s.x,dt)
    }else if(order==='advance'){
      let destination=escortX(u);
-     if(sr&&siegeMinionNear(s)){if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}}
+     if(sr&&structureSupported(u,s)){if(t-u.lastAttack>=attackRate(u)){attackStructure(u,s,t);u.lastAttack=t;u.attackCount++}}
      else move(u,destination,dt)
    }else move(u,defX(u),dt)
  }
@@ -436,5 +445,5 @@ function hud(t){
  $('#playerTowers').textContent=structures.filter(s=>!s.dead&&s.side===1).length;$('#enemyTowers').textContent=structures.filter(s=>!s.dead&&s.side===-1).length;
  let tm=$('#matchTimer');if(tm)tm.textContent=timeText(matchTime);
  let wave=$('#waveTimer');if(wave)wave.textContent=Math.ceil(WAVE_INTERVAL-waveClock)+'s';
- document.querySelectorAll('.spawn').forEach((b,i)=>{let u=loadout[i].u,left=Math.max(0,(spawnCd['p'+i]||0)-t);b.disabled=gold<u.cost||left>0;b.querySelector('small').textContent=left?left.toFixed(0)+'s':`${loadout[i].fac} • ${u.cost} • ${u.gen}s`})
+ document.querySelectorAll('.spawn').forEach((b,i)=>{let u=loadout[i].u,left=Math.max(0,(spawnCd['p'+i]||0)-t);b.disabled=gameMode==='robot'||gold<u.cost||left>0||!canSpawnUnit(1,u);b.querySelector('small').textContent=left?left.toFixed(0)+'s':`${loadout[i].fac} • ${u.cost} • ${u.gen}s`})
 }
