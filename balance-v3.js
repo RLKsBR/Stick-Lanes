@@ -34,7 +34,7 @@ function generateCandidates(n){
 }
 function newSide(comp){
  return{comp,gold:500,base:6000,towers:[[2200,3000,4000,5400],[2200,3000,4000,5400],[2200,3000,4000,5400]],
- lanes:[newLane(),newLane(),newLane()],ready:{},metrics:{},wave:0}
+ lanes:[newLane(),newLane(),newLane()],ready:{},usage:{},metrics:{},wave:0}
 }
 function newLane(){return{army:0,minion:0,minionFac:null,unitShare:{}}}
 function towerIndex(s,l){let a=s.towers[l];for(let i=0;i<a.length;i++)if(a[i]>0)return i;return-1}
@@ -44,11 +44,12 @@ function addUnit(side,lane,u){
 }
 function chooseSpawn(side,t){
  let avail=side.comp.units.filter(u=>side.gold>=u.cost&&t>=(side.ready[u.key]||0));if(!avail.length)return null;
+ let unused=avail.filter(u=>(side.usage[u.key]||0)===0);if(unused.length)avail=unused;
  avail.sort((a,b)=>value(b)*(.86+Math.random()*.28)-value(a)*(.86+Math.random()*.28));return avail[0]
 }
 function spawnStep(me,foe,t){
  let limit=0;while(limit++<2){let u=chooseSpawn(me,t);if(!u)return;me.gold-=u.cost;me.ready[u.key]=t+u.gen;
- let scores=[0,1,2].map(i=>foe.lanes[i].army+foe.lanes[i].minion-me.lanes[i].army-me.lanes[i].minion+Math.random()*18),lane=scores.indexOf(Math.max(...scores));addUnit(me,lane,u)}
+ let scores=[0,1,2].map(i=>foe.lanes[i].army+foe.lanes[i].minion-me.lanes[i].army-me.lanes[i].minion+Math.random()*18),lane=scores.indexOf(Math.max(...scores));me.usage[u.key]=(me.usage[u.key]||0)+1;addUnit(me,lane,u)}
 }
 function spawnWave(side){
  let fac=side.comp.pair[side.wave%2];side.wave++;
