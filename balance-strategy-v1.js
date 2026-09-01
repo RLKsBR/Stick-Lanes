@@ -1,4 +1,4 @@
-/* Stick Lanes — laboratório estratégico v1
+/* Stick Lanes — laboratório estratégico v2
    Headless, mas com decisões durante a partida. Não existem estratégias nomeadas:
    cada agente aprende pesos de utilidade a partir do estado e o comportamento
    observado é descrito somente depois da partida. Sem limite fixo de duração. */
@@ -7,13 +7,12 @@
 const DB_KEY_LOCAL='stickLanesBalanceFrontlineV3.v2';
 const HISTORY_KEY_LOCAL='stickLanesBalanceFrontlineV3.history.v2';
 const PREV_RULESET=window.SL_RULESET_VERSION||'frontline';
-const STRATEGY_RULESET=PREV_RULESET+'-strategy-v1';
-const STRATEGY_HISTORY_KEY='stickLanesStrategyHistory.v1';
+const STRATEGY_RULESET=PREV_RULESET+'-strategy-v2';
+const STRATEGY_HISTORY_KEY='stickLanesStrategyHistory.v2';
 const DT=8;
 const ADAPT_EVERY=64;
-const DEADLOCK_REPEAT_COUNT=20;
+const NO_STRUCTURE_PROGRESS_SECONDS=7200;
 const POLICY_KEYS=['threat','opportunity','enemyStructure','ownStructure','minion','center','top','bottom','unitValue','unitPower','siege','tank','ranged','support','cheap','cost','reserve'];
-const ROLE_KEYS=['tank','fighter','ranged','assassin','bruiser','support','controller','siege','skirmisher','specialist','elite','unique'];
 const clampS=(v,a,b)=>Math.max(a,Math.min(b,v));
 const randn=()=>{let u=Math.max(1e-9,Math.random()),v=Math.max(1e-9,Math.random());return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
 function safeJSON(s){try{return JSON.parse(s)}catch{return null}}
@@ -27,13 +26,22 @@ if(old&&old.ruleset!==STRATEGY_RULESET){
 }
 window.SL_RULESET_VERSION=STRATEGY_RULESET;
 
+/* Registra os limites depois que mapa e torretas terminaram de montar o lado.
+   Assim a IA não precisa adivinhar o HP máximo por índice. */
+const baseStrategicNewSide=newSide;
+newSide=function(comp){
+ const side=baseStrategicNewSide(comp);
+ side.baseMax=side.base;
+ side.towerMax=side.towers.map(row=>row.slice());
+ return side
+};
+
 function newPolicy(){
  const w={};for(const k of POLICY_KEYS)w[k]=randn()*.55;
  /* só define o espaço de busca, não uma estratégia pronta */
  w.unitValue+=.85;w.unitPower+=.20;w.threat+=.20;w.enemyStructure+=.15;
  return{w,lr:.055+Math.random()*.035,temperature:.42+Math.random()*.34,explore:.08+Math.random()*.14}
 }
-function clonePolicy(p){return{w:{...p.w},lr:p.lr,temperature:p.temperature,explore:p.explore}}
 function policyFor(c){return c.strategyPolicy||(c.strategyPolicy=newPolicy())}
 function blendLoser(loser,winner){
  if(!loser||!winner)return;for(const k of POLICY_KEYS)loser.w[k]=clampS(loser.w[k]*.90+winner.w[k]*.10+randn()*.035,-3,3);
@@ -41,7 +49,11 @@ function blendLoser(loser,winner){
 }
 function mutateWinner(p){if(Math.random()<.28){let k=POLICY_KEYS[Math.floor(Math.random()*POLICY_KEYS.length)];p.w[k]=clampS(p.w[k]+randn()*.018,-3,3)}}
 
-function frontHp(side,lane){let i=towerIndex(side,lane);if(i<0)return side.base/6000;let row=side.towers[lane],max=SL_BALANCE_TURRETS_V1&&[1,2,4,5,7,8].includes(i)?900:Math.max(1,row[i]);return clampS(row[i]/Math.max(max,row[i]),0,1)}
+function towerHealthRatio(side,lane,index){
+ if(index<0)return clampS(side.base/Math.max(1,side.baseMax||6000),0,1);
+ let max=side.towerMax?.[lane]?.[index]||side.towers[lane][index]||1;
+ return clampS(side.towers[lane][index]/Math.max(1,max),0,1)
+}
 function lanePower(l){return l.army+l.minion}
 function normDiff(a,b){return clampS((a-b)/Math.max(100,a+b),-1,1)}
 function roleFeature(u,r){return u.role===r?1:0}
@@ -56,8 +68,8 @@ function unitFeatures(u,me){
 function laneFeatures(me,foe,lane){
  const own=lanePower(me.lanes[lane]),enemy=lanePower(foe.lanes[lane]);
  const enemyTower=towerIndex(foe,lane),ownTower=towerIndex(me,lane);
- const enemyWeak=enemyTower<0?1:1-clampS(foe.towers[lane][enemyTower]/5400,0,1);
- const ownWeak=ownTower<0?1:1-clampS(me.towers[lane][ownTower]/5400,0,1);
+ const enemyWeak=enemyTower<0?1:1-towerHealthRatio(foe,lane,enemyTower);
+ const ownWeak=ownTower<0?1:1-towerHealthRatio(me,lane,ownTower);
  return{
   threat:normDiff(enemy,own),opportunity:normDiff(own,enemy),enemyStructure:enemyWeak,ownStructure:ownWeak,
   minion:normDiff(me.lanes[lane].minion,foe.lanes[lane].minion),center:lane===1?1:0,top:lane===0?1:0,bottom:lane===2?1:0
@@ -90,31 +102,29 @@ function strategicSpawnStep(me,foe,t,policy,b){
  b.decisions++;b.spawns++;b.lane[lane]++;b.roles[u.role]=(b.roles[u.role]||0)+1;b.spent+=u.cost;
  if(b.lastLane!==null&&b.lastLane!==lane)b.laneSwitches++;b.lastLane=lane;addTrace(b,pick.features)
 }
-function macroState(A,B){
- let q=n=>Math.round(n/25);let arr=[q(A.base),q(B.base)];
- for(let l=0;l<3;l++){arr.push(...A.towers[l].map(q),...B.towers[l].map(q),q(A.lanes[l].army),q(A.lanes[l].minion),q(B.lanes[l].army),q(B.lanes[l].minion))}return arr.join(',')
-}
+function structureHp(side){return side.base+side.towers.reduce((sum,row)=>sum+row.reduce((a,b)=>a+b,0),0)}
 function scoreReward(me,foe,last){let s=scoreSide(me,foe),d=s-last;return{score:s,reward:Math.tanh(d/1600)}}
 
-/* Sem relógio máximo. A única saída sem base destruída é detectar repetição do
-   mesmo macroestado muitas vezes, isto é, um impasse técnico real. */
+/* Sem relógio máximo. O relógio de impasse zera sempre que qualquer estrutura
+   perde vida; uma partida que progride pode durar quanto precisar. */
 simMatch=function(c1,c2){
  let A=newSide(c1),B=newSide(c2),pA=policyFor(c1),pB=policyFor(c2),bA=behaviorBlank(),bB=behaviorBlank();
- let t=0,nextWave=0,nextAdapt=ADAPT_EVERY,lastScoreA=scoreSide(A,B),lastScoreB=-lastScoreA,seen=new Map(),deadlocked=false;
+ let t=0,nextWave=0,nextAdapt=ADAPT_EVERY,lastScoreA=scoreSide(A,B),lastScoreB=-lastScoreA,deadlocked=false;
+ let lastStructureHp=structureHp(A)+structureHp(B),lastStructureProgressAt=0;
  while(A.base>0&&B.base>0){
   A.gold+=15*DT;B.gold+=15*DT;
   strategicSpawnStep(A,B,t,pA,bA);strategicSpawnStep(B,A,t,pB,bB);
   while(t>=nextWave){spawnWave(A);spawnWave(B);nextWave+=22}
   for(let lane=0;lane<3;lane++)fightLane(A.lanes[lane],B.lanes[lane],A,B,lane,DT,t);
   if(t>=nextAdapt){let ra=scoreReward(A,B,lastScoreA),rb=scoreReward(B,A,lastScoreB);adaptBrain(pA,bA,ra.reward);adaptBrain(pB,bB,rb.reward);lastScoreA=ra.score;lastScoreB=rb.score;nextAdapt+=ADAPT_EVERY}
-  if(Math.floor(t/60)!==Math.floor((t-DT)/60)){
-    let key=macroState(A,B),n=(seen.get(key)||0)+1;seen.set(key,n);if(n>=DEADLOCK_REPEAT_COUNT){deadlocked=true;break}
-  }
+  let currentStructureHp=structureHp(A)+structureHp(B);
+  if(currentStructureHp<lastStructureHp-.01){lastStructureHp=currentStructureHp;lastStructureProgressAt=t}
+  if(t-lastStructureProgressAt>=NO_STRUCTURE_PROGRESS_SECONDS){deadlocked=true;break}
   t+=DT
  }
  let completed=A.base<=0||B.base<=0,sc=scoreSide(A,B),winner=completed?(A.base>B.base?1:A.base<B.base?-1:0):0;
  if(winner===1){blendLoser(pB,pA);mutateWinner(pA)}else if(winner===-1){blendLoser(pA,pB);mutateWinner(pB)}else{for(const p of [pA,pB]){let k=POLICY_KEYS[Math.floor(Math.random()*POLICY_KEYS.length)];p.w[k]=clampS(p.w[k]+randn()*.05,-3,3)}}
- return{winner,A,B,duration:t,score:sc,completed,timedOut:false,deadlocked,behaviorA:bA,behaviorB:bB}
+ return{winner,A,B,duration:t,score:sc,completed,timedOut:false,deadlocked,deadlockReason:deadlocked?'sem dano estrutural por 2h simuladas':null,behaviorA:bA,behaviorB:bB}
 };
 
 /* Histogramas crescem conforme necessário. Não existe último bucket de 90 min. */
@@ -151,7 +161,7 @@ function renderStrategies(cands,strategyStats){
 }
 function saveStrategyBatch(total,cands,stats){
  let profiles=cands.map(c=>{let s=stats[c.id];if(!s)return null;return{pair:c.pair,games:s.games,wins:s.wins||0,losses:s.losses||0,draws:s.draws||0,behavior:behaviorText(s),policy:{...policyFor(c).w}}}).filter(Boolean);
- let db=readJSON(DB_KEY_LOCAL,null);if(db){db.simulationMode='strategic-headless-v1';db.noFixedTimeLimit=true;db.strategyProfiles=profiles;localStorage.setItem(DB_KEY_LOCAL,JSON.stringify(db))}
+ let db=readJSON(DB_KEY_LOCAL,null);if(db){db.simulationMode='strategic-headless-v2';db.noFixedTimeLimit=true;db.strategyProfiles=profiles;localStorage.setItem(DB_KEY_LOCAL,JSON.stringify(db))}
  let h=readJSON(STRATEGY_HISTORY_KEY,[]);h.unshift({savedAt:Date.now(),matches:total,ruleset:STRATEGY_RULESET,profiles});localStorage.setItem(STRATEGY_HISTORY_KEY,JSON.stringify(h.slice(0,12)))
 }
 
@@ -168,5 +178,5 @@ run=async function(){
  st.textContent=`Concluído: ${total.toLocaleString('pt-BR')} partidas estratégicas, sem limite fixo de duração.`;btn.disabled=false
 };
 $('#runLab').onclick=run;
-window.SL_STRATEGY_LAB_V1={ruleset:STRATEGY_RULESET,noFixedTimeLimit:true,dt:DT,deadlockRepeatCount:DEADLOCK_REPEAT_COUNT};
+window.SL_STRATEGY_LAB_V2={ruleset:STRATEGY_RULESET,noFixedTimeLimit:true,dt:DT,noStructureProgressSeconds:NO_STRUCTURE_PROGRESS_SECONDS};
 })();
