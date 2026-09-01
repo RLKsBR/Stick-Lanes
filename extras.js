@@ -21,9 +21,9 @@ mapScript.onload=()=>{
   };
   document.head.appendChild(assetScript);
   const pill=document.querySelector('.statusPill');
-  if(pill)pill.textContent='22.500 • mapa 2D e meio • movimento 3×';
+  if(pill)pill.textContent='22.500 • mapa 2D e meio • movimento 6×';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L. Movimento global 3×.';
+  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L. Movimento global 6×.';
 };
 document.head.appendChild(mapScript);
 
