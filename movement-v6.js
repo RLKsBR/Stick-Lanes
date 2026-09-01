@@ -1,7 +1,7 @@
-/* Stick Lanes — movimento v6: deslocamento global 3x */
+/* Stick Lanes — movimento v6: deslocamento global 6x */
 'use strict';
 (function(){
-const MOVE_MULT=3.0;
+const MOVE_MULT=6.0;
 move=function(u,x,dt){
   let d=x-u.x;if(Math.abs(d)<7){u.runTime=0;return}
   let now=simTime,slow=now<u.slowUntil?.92:1;
