@@ -1,144 +1,80 @@
 # Stick Lanes — Frontline v3
 
-Protótipo de estratégia em tempo real para navegador, com exércitos formados por duas facções, oito unidades compráveis por composição, ondas automáticas de minions e um campo de batalha grande dividido em três frentes.
+Protótipo de estratégia em tempo real para navegador. O HTML/Canvas é o laboratório rápido de gameplay, mapa, IA, balanceamento e direção visual; a versão final está planejada para Java/libGDX.
 
 ## Jogar
 
 - Jogo: https://rlksbr.github.io/Stick-Lanes/
 - Laboratório de balanceamento: https://rlksbr.github.io/Stick-Lanes/balance.html
 
-O GitHub Pages publica a branch `main` a partir da raiz do repositório. Depois de um commit, a atualização pode levar alguns minutos para aparecer.
+O GitHub Pages publica a branch `main` a partir da raiz. A atualização pode levar alguns minutos depois de um merge.
 
-O menu inicial separa três fluxos:
+O menu principal possui somente:
 
-- **Jogar** — montagem manual de duas facções e oito tropas contra a IA.
-- **Robô × Robô** — Simulação assistida com as facções dos dois lados sorteadas; cada robô escolhe seu próprio elenco de oito tropas. Velocidades 1×, 3×, 10× e 20×.
-- **Simulação** — laboratório sem renderização, com facções aleatórias ou um par fixo escolhido pelo usuário.
+- **Player versus IA**
+- **Simulação assistida** — robô versus robô renderizado, com 1×, 3×, 10× e 20×
+- **Simulação** — laboratório headless
+- **Créditos: Ruan Lukas**
 
-## Frontline v3
+## Estado atual do jogo renderizado
 
-- Mundo horizontal com largura virtual de **22.500**.
-- **3 lanes principais**, cada uma dividida visualmente em **3 sub-lanes**.
-- As rotas convergem nas bases.
-- **4 torres por lane**, totalizando **12 torres por lado**.
-- Bases com **6.000 de vida**.
-- Cada exército combina **2 facções** e escolhe **8 unidades compráveis**.
-- Unidades compráveis têm tempos de geração bem mais longos, atualmente na faixa de **28 a 120 segundos**.
-- A duração agora é medida até a destruição da base, com limite técnico de **90 minutos**. Os **20 minutos** são apenas uma referência de leitura, não o encerramento automático da simulação.
-- Economia atual: **+30 de ouro a cada 2 segundos**.
+- Mundo horizontal de **22.500 unidades**.
+- **3 lanes**, cada uma com **3 sub-lanes**.
+- **4 torres principais por lane** e base com **6.000 de vida**.
+- Alcance atual das torres, já na escala ampliada: avançada 30, central 30, traseira 32 e fortaleza 36.
+- Cada exército combina **2 facções** e usa **8 tropas compráveis**.
+- Economia: **+30 de ouro a cada 2 segundos**.
+- Ordens por lane: **Base**, **Atrás da torre**, **À frente da torre**, **Avançar** e **Atacar**.
+- A IA usa ouro, cooldowns e unidades válidas como o jogador; não recebe bônus invisíveis.
+
+**Avançar** acompanha a onda aliada, prefere limpar minions e ataca estruturas quando existe suporte. **Atacar** não exige minions, prefere tropas inimigas e não persegue um alvo para além da estrutura inimiga atual.
 
 ## Minions
 
-Cada facção possui três minions próprios:
+Cada onda cria, por lane:
 
-- **Tanque** — ocupa a sub-lane de resistência.
-- **Lutador** — pressão corpo a corpo.
-- **À distância** — pressão de retaguarda.
+- 1 tanque;
+- 2 lutadores;
+- 3 atiradores.
 
-As ondas são automáticas. Os minions saem pelo eixo central da frente e depois se distribuem pelas três sub-lanes.
+São **18 minions por lado** a cada onda. Todos usam velocidade 5,4. O counter entre facções concede +20% contra a facção indicada no catálogo.
 
-Existe um sistema inicial de counters entre facções: o minion de uma facção recebe **+20% de vantagem** contra os minions de uma facção específica. O ciclo foi construído de forma simétrica para servir como base de testes antes de ajustes manuais de matchups.
+Minions só entregam ouro quando são abatidos por uma tropa comprável ou lenda; mortes causadas por minions ou torres não entregam a recompensa. Uma torre sem minions inimigos próximos fica fortificada e recebe apenas 64,5% do dano normal. Minions causam 35% do dano normal a estruturas.
 
 ## Facções
 
-A Frontline v3 possui 26 facções:
+`factions-v3.js` é a fonte de verdade para nome, passiva, três minions, tropas e funções de cada unidade. A Frontline v3 possui 26 facções; não renomeie nem invente tropas em código ou plano visual sem atualizar essa referência deliberadamente.
 
-1. Alienígenas
-2. Mentalistas
-3. Robôs
-4. Lobos
-5. Zumbis
-6. Samurais
-7. Artrópodes
-8. Elementais
-9. Demônios
-10. Celestiais
-11. Dinossauros
-12. Mutantes
-13. Necromantes
-14. Bestas Marinhas
-15. Medievais
-16. Ninjas
-17. Nômades do Deserto
-18. Titãs
-19. Alquimistas
-20. Orcs
-21. Espectrais
-22. Cultistas
-23. Músicos
-24. Cristalinos
-25. Míticos
-26. Físicos
+Os planos visuais completos são mantidos fora do código e devem ser consultados antes de implementar uma facção. Já existem planos para Mentalistas, Alienígenas, Medievais, Robôs, Lobos, Zumbis, Samurais, Artrópodes, Elementais e Demônios.
 
-Cada facção possui identidade visual própria, paleta/material, passiva de facção, três minions temáticos e um catálogo de unidades com papéis como lutador, tanque, assassino, suporte, controle, cerco, elite e unidade única.
+## Laboratório estratégico
 
-Alguns exemplos de identidade:
+O laboratório executa simulações sem renderização. O padrão atual é **500 partidas** e **80 composições candidatas**.
 
-- **Medievais** — disciplina de linha, metal, madeira, couro e máquinas de cerco.
-- **Alienígenas** — formas orgânicas e assimétricas; Gosma dourada, Olho Flutuante sem asas, Cuspidor-caixa, Fauce Errante etc.
-- **Mentalistas** — humanoides extraterrestres metálicos e completamente sem rosto; a Entidade Psíquica usa corpo com aparência de galáxia.
-- **Robôs** — blindagem modular e linguagem industrial/mecânica.
-- **Lobos** — bônus de matilha e silhuetas ferais.
-- **Zumbis** — decomposição, persistência e retorno de minions.
-- **Samurais** — Bushidô e identidade militar japonesa estilizada.
-- **Necromantes** — mortos-vivos, ossos e invocações.
-- **Alquimistas** — corrosão, transmutação e efeitos químicos.
-- **Músicos** — unidades baseadas em instrumentos e ritmo.
-- **Cristalinos** — geodos, minerais, refração e reflexão.
-- **Míticos** — criaturas como lobisomem, vampiro, bruxa e dragão.
-- **Físicos** — conceitos de física transformados em unidades e efeitos, incluindo radiação acumulativa.
+- Facções podem ser aleatórias ou fixas.
+- Cada robô escolhe oito tropas e decide durante a partida quando comprar, quanto ouro reter e qual lane reforçar.
+- Os pesos de decisão aprendem durante a bateria; rush, turtle e split push não são presets rígidos.
+- A métrica principal de uma unidade considera partidas em que ela realmente entrou em campo.
+- O relatório registra vitórias, uso, impacto, dano estrutural, duração, P50, P90, impasses e perfis estratégicos.
+- Não existe duração máxima fixa. O relógio de impasse é zerado sempre que qualquer torre ou base perde vida; somente **2 horas simuladas sem dano estrutural** encerram a partida como impasse técnico.
+- O laboratório modela duas torretas auxiliares entre cada par de torres principais. Essa formação ainda não foi portada para o jogo renderizado.
 
-## Ordens de batalha
+O banco acumulado usa `localStorage` e pode ser exportado em JSON. A importação só substitui o banco ativo quando o `ruleset` é exatamente o mesmo. Arquivos de regras antigas são arquivados separadamente para impedir que resultados incomparáveis contaminem o balanceamento atual.
 
-As ordens atuais por lane são:
+O JSON `frontline-v3.2` produzido antes das camadas de mapa, torretas e estratégia serve como histórico, não como base para ajustar diretamente o `ruleset` atual.
 
-- Base
-- Atrás da torre
-- À frente da torre
-- Avançar
-- Atacar
+## Arquitetura
 
-**Avançar** mantém as tropas junto dos minions e prioriza a limpeza da onda. **Atacar** avança sem depender de minions e prioriza tropas inimigas, mas interrompe perseguições que tentem puxar a unidade para além da torre atual.
+Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) antes de alterar ordem de scripts, simulação ou fontes de dados. As camadas posteriores substituem funções do motor base de forma deliberada; a ordem em `balance.html` faz parte do comportamento.
 
-## Laboratório de balanceamento
+Arquivos principais:
 
-O projeto possui um simulador separado, sem renderização, para testar grandes volumes de partidas entre robôs.
-
-Estado atual:
-
-- **10.000 partidas** e **240 composições candidatas** como padrão de uma bateria.
-- Opções maiores disponíveis no próprio laboratório.
-- As facções podem ser sorteadas automaticamente para cada composição ou fixadas pelo usuário.
-- Depois de receber as facções, cada robô escolhe e testa automaticamente seu elenco de oito tropas.
-- O robô economiza ouro até colocar todas as oito tropas escolhidas em campo.
-- O relatório mede vitórias, derrotas, empates, spawns, dano, dano estrutural e impacto das unidades.
-- O relatório de duração separa partidas concluídas das que atingiram o limite técnico e mostra média das concluídas, P50 e P90; se houver truncamentos, a média total é marcada como limite inferior.
-- Partidas que ainda não destruíram uma base no limite técnico são registradas como impasse/empate, sem inventar um vencedor pela pontuação intermediária.
-- O simulador credita o multiplicador de demolição das tropas de cerco no dano estrutural e considera as principais passivas de facção ao avaliar uma composição.
-- O draft automatizado garante cobertura das unidades testáveis e exige ao menos uma opção de cerco por composição, reduzindo resultados enganosos causados por tropas raramente escolhidas.
-- O win rate principal de uma unidade considera jogos em que ela **realmente entrou em campo**, evitando atribuir desempenho a unidades que ficaram apenas no loadout.
-- Existe um banco acumulado local por unidade.
-- Resultados e composições podem ser salvos no `localStorage`.
-- O banco de balanceamento pode ser exportado em JSON.
-
-O banco Frontline v3 é separado do baseline antigo, anterior ao sistema de minions.
-
-## Salvamento local
-
-O jogo permite salvar composições de oito unidades diretamente no navegador. O laboratório também mantém histórico local das baterias e estatísticas acumuladas.
-
-Como o armazenamento é via `localStorage`, os dados pertencem ao navegador/aparelho em que foram criados. Para preservar resultados de balanceamento fora do navegador, use a exportação JSON do laboratório.
-
-## Estrutura principal
-
-- `index.html` — interface principal do jogo.
-- `factions-v3.js` — catálogo, identidades, unidades, minions e dados das facções.
-- `game-v3-core.js` — regras e motor da batalha.
-- `game-v3-visuals.js` — renderização procedural 2.5D.
-- `extras.js` — salvamento local de composições.
-- `balance.html` — interface do laboratório.
-- `balance-v3.js` — simulador e métricas da Frontline v3.
+- `index.html`, `game-v3-core.js`, `game-v3-visuals.js` — jogo renderizado.
+- `factions-v3.js`, `balance-patch-v3-3.js`, `minion-speed-v1.js` — dados e ajustes compartilhados.
+- `balance.html`, `balance-v3.js` — motor e interface base do laboratório.
+- `balance-map-v4.js`, `balance-minion-wave-v2.js`, `balance-turrets-v1.js`, `balance-strategy-v1.js` — camadas autoritativas do simulador atual.
+- `balance-import.js` — validação, importação e isolamento de bancos incompatíveis.
 
 ## Status
 
-Projeto em protótipo ativo. Números de custo, dano, vida, defesa, geração, counters, duração das ondas e passivas ainda estão sujeitos a alterações conforme os testes automatizados e as partidas manuais apontarem problemas de balanceamento.
+Protótipo ativo. O visual procedural ainda é provisório. Os próximos passos são portar as torretas auxiliares para o jogo renderizado, levar as ordens táticas completas ao simulador headless e substituir representações genéricas pelo pipeline visual 2,5D planejado para cada facção.

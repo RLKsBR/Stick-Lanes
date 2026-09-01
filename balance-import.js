@@ -67,6 +67,12 @@ function archiveLegacy(raw,fileName){
  localStorage.setItem(LEGACY_KEY,JSON.stringify(archive));
  say('JSON antigo reconhecido e arquivado separadamente. Ele não foi somado ao banco atual porque as métricas não são equivalentes.','warning')
 }
+function archiveIncompatible(raw,fileName,currentRuleset){
+ const source=String(raw.ruleset||'unknown'),safeRule=source.replace(/[^a-z0-9._-]+/gi,'_');
+ const key=`stickLanesBalanceArchive.${safeRule}.${Date.now()}`;
+ localStorage.setItem(key,JSON.stringify({importedAt:Date.now(),fileName,reason:`ruleset incompatível com ${currentRuleset}`,data:raw}));
+ say(`JSON ${source} arquivado separadamente. Ele não substituiu o banco ${currentRuleset}, porque as regras das simulações não são comparáveis.`,'warning')
+}
 async function importFile(file){
  let raw;
  try{raw=JSON.parse(await file.text())}catch{say('Arquivo inválido: não é um JSON válido.','warning');return}
@@ -74,10 +80,11 @@ async function importFile(file){
  if(!currentLike(raw)){say('JSON não reconhecido como banco de balanceamento do Stick Lanes.','warning');return}
  let normalized;
  try{normalized=normalizeCurrent(raw)}catch(err){say('JSON recusado: '+err.message,'warning');return}
+ const currentRuleset=typeof SL_RULESET_VERSION!=='undefined'?String(SL_RULESET_VERSION):'';
+ if(currentRuleset&&normalized.ruleset!==currentRuleset){archiveIncompatible(raw,file.name,currentRuleset);return}
  const current=localStorage.getItem(CURRENT_KEY);
- const ruleNote=typeof SL_RULESET_VERSION!=='undefined'&&normalized.ruleset!==SL_RULESET_VERSION?`\n\nAtenção: arquivo ${normalized.ruleset}; jogo atual ${SL_RULESET_VERSION}.`:'';
  const strategyNote=normalized.strategyProfiles.length?`\n\nPerfis estratégicos: ${normalized.strategyProfiles.length}.`:'';
- const ok=confirm(`Importar ${normalized.matches.toLocaleString('pt-BR')} simulações e ${Object.keys(normalized.units).length} unidades?${current?'\n\nO banco local atual será salvo em backup antes da substituição.':''}${strategyNote}${ruleNote}`);
+ const ok=confirm(`Importar ${normalized.matches.toLocaleString('pt-BR')} simulações e ${Object.keys(normalized.units).length} unidades?${current?'\n\nO banco local atual será salvo em backup antes da substituição.':''}${strategyNote}`);
  if(!ok){say('Importação cancelada.');return}
  if(current)localStorage.setItem(BACKUP_KEY,current);
  localStorage.setItem(CURRENT_KEY,JSON.stringify(normalized));

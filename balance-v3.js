@@ -1,5 +1,5 @@
-/* Stick Lanes — laboratório Frontline v3
-   Simulação headless agregada: 10k partidas em poucos segundos na maioria dos aparelhos.
+/* Stick Lanes — motor base do laboratório Frontline v3
+   A interface atual usa uma camada estratégica posterior sobre esta simulação agregada.
    Métrica principal por unidade usa apenas partidas em que a unidade realmente spawnou. */
 'use strict';
 const DB_KEY='stickLanesBalanceFrontlineV3.v2',HISTORY_KEY='stickLanesBalanceFrontlineV3.history.v2';

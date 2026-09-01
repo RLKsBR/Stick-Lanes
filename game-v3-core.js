@@ -21,6 +21,7 @@ const towerTypes=[
  COMBAT.tower.advanced
 ];
 const BASE_HP=6000,WAVE_INTERVAL=22;
+const MINION_WAVE_FORMATION=[['tank',-1],['fighter',0],['fighter',0],['ranged',1],['ranged',1],['ranged',1]];
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
@@ -248,7 +249,7 @@ function runSideAI(side,t){
 function spawnWave(side){
  const fac=sideFactions[side][waveIndex%2];
  for(let lane=0;lane<3;lane++){
-   [['tank',-1],['fighter',0],['ranged',1]].forEach(([type,sub])=>{
+   MINION_WAVE_FORMATION.forEach(([type,sub])=>{
      const p=SL_MINION_PROFILES[type],name=facMeta(fac).minions[type];
      let u={name,role:type,hp:p.hp,def:p.def,atk:p.atk,speed:p.speed,range:p.range,rate:p.rate,cost:0,gen:0,
        special:type==='tank'?{block:.06,tank:true}:type==='ranged'?{ranged:true}:{},ability:{name:'Minion',desc:'Unidade automática'}};
