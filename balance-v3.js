@@ -34,9 +34,10 @@ function makeCandidate(pair=choosePair(),greedy=false){
  return{id:Math.random().toString(36).slice(2),pair,units,games:0,wins:0,losses:0,draws:0,score:0,duration:0}
 }
 function generateCandidates(n){
- let out=[],seen=new Set();
- for(let i=0;i<FAC.length&&out.length<n;i++){let pair=[FAC[i],FAC[(i+7)%FAC.length]],c=makeCandidate(pair,true),sig=c.units.map(u=>u.key).sort().join(';');if(!seen.has(sig)){seen.add(sig);out.push(c)}}
- let guard=0;while(out.length<n&&guard++<4000){let c=makeCandidate(),sig=c.units.map(u=>u.key).sort().join(';');if(!seen.has(sig)){seen.add(sig);out.push(c)}}return out
+ let out=[],seen=new Set(),fixed=$('#simFactionMode')?.value==='fixed'?choosePair():null;
+ if(!fixed)for(let i=0;i<FAC.length&&out.length<n;i++){let pair=[FAC[i],FAC[(i+7)%FAC.length]],c=makeCandidate(pair,true),sig=c.units.map(u=>u.key).sort().join(';');if(!seen.has(sig)){seen.add(sig);out.push(c)}}
+ else{let c=makeCandidate(fixed,true),sig=c.units.map(u=>u.key).sort().join(';');seen.add(sig);out.push(c)}
+ let guard=0;while(out.length<n&&guard++<6000){let c=makeCandidate(fixed||choosePair()),sig=c.units.map(u=>u.key).sort().join(';');if(!seen.has(sig)){seen.add(sig);out.push(c)}}return out
 }
 function newSide(comp){
  return{comp,gold:500,base:6000,towers:[[2200,3000,4000,5400],[2200,3000,4000,5400],[2200,3000,4000,5400]],
