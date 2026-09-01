@@ -13,16 +13,18 @@ const VIEW_W=1800,VIEW_H=1000,WORLD_W=22500,BASE_Y=500,PX=26,MOVE_SCALE=18;
 const BASE_X={1:180,'-1':22320},LANE_Y=[245,500,755],MAIN_SPLIT_END=2100,MAIN_MERGE_START=20400;
 const SUB_GAP=54,SUB_SPLIT_DIST=1500,SUB_FULL_DIST=2600;
 const towerXs={1:[2300,4800,7300,9800],'-1':[20200,17700,15200,12700]};
+const COMBAT=SL_COMBAT_RULES;
 const towerTypes=[
- {label:'Fortaleza',hp:1200,atk:42,range:12,rate:1.30},
- {label:'Traseira',hp:1000,atk:36,range:11,rate:1.40},
- {label:'Central',hp:800,atk:30,range:10,rate:1.50},
- {label:'Avançada',hp:600,atk:24,range:9,rate:1.60}
+ COMBAT.tower.fortress,
+ COMBAT.tower.rear,
+ COMBAT.tower.central,
+ COMBAT.tower.advanced
 ];
 const BASE_HP=6000,WAVE_INTERVAL=22;
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,waveClock=0,waveIndex=0;
 let enemyFactions=[],sideFactions={1:[], '-1':[]};
+let unitSeq=0,showTowerRanges=false;
 const stance=['advance','advance','advance'],spawnCd={},enemySpawnCd={};
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -108,6 +110,8 @@ $('#camRight').onclick=()=>setCamera(cameraX+1200);
 $('#camHome').onclick=()=>setCamera(0);
 $('#camMid').onclick=()=>setCamera((WORLD_W-VIEW_W)/2);
 $('#camEnemy').onclick=()=>setCamera(WORLD_W-VIEW_W);
+const rangeButton=$('#towerRanges');
+if(rangeButton)rangeButton.onclick=()=>{showTowerRanges=!showTowerRanges;rangeButton.classList.toggle('active',showTowerRanges);rangeButton.textContent=showTowerRanges?'Alcance: ligado':'Alcance das torres'};
 let drag=null;
 canvas.addEventListener('pointerdown',e=>{let r=canvas.getBoundingClientRect();drag={id:e.pointerId,startX:e.clientX,lastX:e.clientX,moved:false,scale:VIEW_W/r.width};canvas.setPointerCapture(e.pointerId)});
 canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;let dx=e.clientX-drag.lastX;if(Math.abs(e.clientX-drag.startX)>7)drag.moved=true;setCamera(cameraX-dx*drag.scale);drag.lastX=e.clientX});
@@ -131,7 +135,7 @@ function reset(){
 function makeStructures(){
  structures=[];
  for(const side of [1,-1])for(let lane=0;lane<3;lane++)towerXs[side].forEach((x,i)=>{
-   let t=towerTypes[i];structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false})
+   let t=towerTypes[i];structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
  })
 }
 function aliveTowers(side,lane){return structures.filter(s=>!s.dead&&s.side===side&&s.lane===lane)}
@@ -148,11 +152,13 @@ function applySpawnPassive(obj){
  }
 }
 function spawnUnit(side,lane,fac,u,opts={}){
- let obj={side,lane,sub:opts.sub??roleSub(u.role),fac,name:u.name,role:u.role,cost:opts.minion?0:(u.cost||0),
+ let born=performance.now()/1000;
+ let obj={id:++unitSeq,side,lane,sub:opts.sub??roleSub(u.role),fac,name:u.name,role:u.role,cost:opts.minion?0:(u.cost||0),
    x:side===1?BASE_X[1]+95:BASE_X[-1]-95,hp:u.hp,maxHp:u.hp,def:u.def,atk:u.atk,speed:u.speed,range:u.range,rate:u.rate,
    special:{...(u.special||{})},ability:u.ability,minion:!!opts.minion,minionType:opts.minionType||null,lastAttack:0,lastSkill:-999,lastDamaged:-999,
-   stunUntil:0,slowUntil:0,dead:false,rewarded:false,chargeReady:true,revived:false,born:performance.now()/1000,anim:Math.random()*10,
-   powerFlash:-999,origSide:side,attackCount:0,radiation:0,acidStacks:0};
+   stunUntil:0,slowUntil:0,dead:false,rewarded:false,chargeReady:true,revived:false,born,anim:Math.random()*10,
+   powerFlash:-999,origSide:side,attackCount:0,radiation:0,acidStacks:0,lastMoved:born,runTime:0,combatSince:null,
+   lastTargetId:null,lastTargetSwitch:-999,mentalGuardReadyAt:born,musicUntil:-999};
  applySpawnPassive(obj);units.push(obj);return obj;
 }
 function spawnPlayer(i){
@@ -193,7 +199,15 @@ function loop(now){
  if(playerBase<=0||enemyBase<=0){running=false;setTimeout(()=>alert(playerBase>0?`Vitória! ${timeText(matchTime)}`:`Derrota! ${timeText(matchTime)}`),50);return}
  requestAnimationFrame(loop)
 }
-function reward(v,side){if(v.rewarded||v.minion)return;v.rewarded=true;let r=Math.floor(v.cost*.1);if(side===1)gold+=r;else enemyGold+=r}
+function reward(v,killer){
+ if(v.rewarded||!killer)return;
+ if(v.minion){
+   if(killer.minion||killer.fac==='Torre')return;
+   let r=COMBAT.minionRewards[v.minionType]||0;
+   v.rewarded=true;if(killer.side===1)gold+=r;else enemyGold+=r;return
+ }
+ v.rewarded=true;let r=Math.floor(v.cost*.1);if(killer.side===1)gold+=r;else enemyGold+=r
+}
 function sameFront(a,b){return a.lane===b.lane}
 function nearestEnemy(u,range){return units.filter(v=>!v.dead&&v.side!==u.side&&sameFront(u,v)&&dist(u,v)<=range*PX).sort((a,b)=>dist(u,a)-dist(u,b))[0]}
 function nextStructure(u){
@@ -210,12 +224,15 @@ function alliesNear(u,r=300){return units.filter(v=>!v.dead&&v.side===u.side&&v!
 function attackRate(u){
  let m=1;if(u.fac==='Orcs'&&u.hp/u.maxHp<.4)m*=.82;
  if(u.fac==='Músicos'&&u.attackCount%4===3)m*=.7;
+ if(performance.now()/1000<u.musicUntil)m*=.9;
  return Math.max(.35,u.rate*m)
 }
 function move(u,x,dt){
- let d=x-u.x;if(Math.abs(d)<7)return;
- let slow=(performance.now()/1000<u.slowUntil)?.72:1;
- u.x+=Math.sign(d)*u.speed*MOVE_SCALE*slow*dt;u.x=clamp(u.x,BASE_X[1]+70,BASE_X[-1]-70)
+ let d=x-u.x;if(Math.abs(d)<7){u.runTime=0;return}
+ let now=performance.now()/1000,slow=now<u.slowUntil ? .92 : 1;
+ u.x+=Math.sign(d)*u.speed*MOVE_SCALE*slow*dt;u.x=clamp(u.x,BASE_X[1]+70,BASE_X[-1]-70);
+ u.lastMoved=now;u.runTime+=dt;
+ if(u.fac==='Dinossauros'&&u.runTime>=1.5)u.chargeReady=true
 }
 function passiveTick(u,dt,t){
  if(u.radiation>0){u.hp-=u.maxHp*u.radiation*dt;u.radiation=Math.max(0,u.radiation-.003*dt)}
@@ -241,17 +258,47 @@ function update(dt,t){
  units=units.filter(u=>!u.dead&&u.hp>0)
 }
 function structurePacing(){return matchTime<480?.68:matchTime<720?.84:1}
+function siegeMinionNear(s){
+ if(s.kind!=='tower')return false;
+ let radius=COMBAT.siege.breachRadius*PX,sy=laneYAt(s.lane,s.x);
+ return units.some(u=>!u.dead&&u.minion&&u.side!==s.side&&u.lane===s.lane&&
+   Math.hypot(u.x-s.x,yOf(u)-sy)<=radius)
+}
+function towerDamageTaken(s,t){
+ if(siegeMinionNear(s))s.breachUntil=t+COMBAT.siege.breachGrace;
+ s.fortified=t>s.breachUntil;
+ return s.fortified?COMBAT.siege.fortifiedDamageTaken:1
+}
 function attackStructure(a,s,t){
  let d=a.atk*(a.special.siege||1)*structurePacing();
  if(a.role==='siege')d*=1.25;
- if(s.kind==='base')damageBase(s.side,d);else{s.hp-=d;if(s.hp<=0){s.hp=0;s.dead=true}}
+ if(a.minion)d*=COMBAT.siege.minionStructureDamage;
+ if(s.kind==='base')damageBase(s.side,d);
+ else{d*=towerDamageTaken(s,t);s.hp-=d;if(s.hp<=0){s.hp=0;s.dead=true}}
  let y=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x);effects.push({type:'impact',x:s.x,y,t,color:attackColor(a)});
  if(a.range>4)effects.push({type:'beam',x1:a.x,y1:yOf(a)-18,x2:s.x,y2:y-30,t,color:attackColor(a)})
 }
+function nearFriendlyTower(u,r=8*PX){
+ return structures.some(s=>!s.dead&&s.kind==='tower'&&s.side===u.side&&s.lane===u.lane&&Math.abs(s.x-u.x)<=r)
+}
+function effectiveDefense(u){
+ return u.def*(u.fac==='Medievais'&&nearFriendlyTower(u)?1.08:1)
+}
 function incomingMultiplier(b){
- let m=1;if(b.fac==='Robôs')m*=.88;
- if(b.fac==='Artrópodes')m*=.90;
+ let m=1;
+ if(b.fac==='Robôs')m*=.88;
+ if(b.special.block)m*=1-Math.min(.25,b.special.block+(alliesNear(b,260)>0?.06:0));
  return m
+}
+function controlDuration(v,duration,t){
+ let d=duration;
+ if(v.role==='elite'||v.role==='unique')d*=.75;
+ if(v.fac==='Mentalistas'&&t>=v.mentalGuardReadyAt){
+   d*=COMBAT.mentalistGuard.durationMultiplier;
+   v.mentalGuardReadyAt=t+COMBAT.mentalistGuard.cooldown;
+   v.powerFlash=t
+ }
+ return d
 }
 function factionDamageBonus(a,b){
  let m=1;
@@ -259,14 +306,14 @@ function factionDamageBonus(a,b){
  if(a.fac==='Samurais'&&a.hp/a.maxHp<.35)m*=1.20;
  if(a.fac==='Lobos')m*=1+Math.min(.24,alliesNear(a,260)*.08);
  if(a.fac==='Cultistas')m*=1+Math.min(.15,Math.floor(alliesNear(a,280)/3)*.05);
- if(a.fac==='Míticos'&&(a.role==='elite'||a.role==='unique'))m*=1.10;
  if(a.fac==='Músicos'&&a.attackCount%4===3)m*=1.25;
  if(a.role==='elite'&&b.minion)m*=1.10;
+ if(a.role==='fighter'&&alliesNear(b,210)===0)m*=1.10;
  return m
 }
-function dodgeChance(b){return Math.min(.4,(b.special.dodge||0)+(b.fac==='Ninjas'?.12:0)+(b.fac==='Espectrais'?.15:0))}
+function dodgeChance(b){return Math.min(.4,b.special.dodge||0)}
 function killUnit(b,killer,t){
- if(b.dead)return;b.dead=true;if(killer)reward(b,killer.side);
+ if(b.dead)return;b.dead=true;if(killer)reward(b,killer);
  if(b.minion&&b.fac==='Zumbis'&&!b.revived&&Math.random()<.12){
    let p=SL_MINION_PROFILES[b.minionType],u={name:b.name,role:b.minionType,hp:p.hp*.4,def:p.def,atk:p.atk,speed:p.speed,range:p.range,rate:p.rate,cost:0,gen:0,special:{},ability:{name:'Retorno',desc:''}};
    let z=spawnUnit(b.side,b.lane,b.fac,u,{minion:true,minionType:b.minionType,sub:b.sub});z.x=b.x;z.revived=true
@@ -278,29 +325,36 @@ function killUnit(b,killer,t){
 }
 function attack(a,b,t){
  if(Math.random()<dodgeChance(b))return;
- let def=b.def*(1-Math.min(.2,b.acidStacks*.04));
+ let def=effectiveDefense(b)*(1-Math.min(.2,b.acidStacks*.04));
  if(a.special.armorPierce)def*=1-a.special.armorPierce;
  if(a.fac==='Físicos')def*=.90;
- let d=a.atk*factionDamageBonus(a,b),red=Math.min(.75,def/(def+125));d*=1-red;d*=incomingMultiplier(b);
- if(a.special.charge&&a.chargeReady){d*=1+a.special.charge;a.chargeReady=false}
- if(a.special.block)d*=1;
- b.hp-=d;b.lastDamaged=t;
+ let roleBonus=1;
+ if(a.role==='ranged'&&t-a.lastMoved>=3){roleBonus*=1.20;a.lastMoved=t}
+ if(a.role==='assassin'&&a.lastTargetId!==b.id&&t-a.lastTargetSwitch>=5){roleBonus*=1.25;a.lastTargetSwitch=t}
+ if(a.role==='bruiser'){if(a.combatSince===null||t-a.lastDamaged>4)a.combatSince=t;roleBonus*=1+Math.min(.12,(t-a.combatSince)*.02)}
+ a.lastTargetId=b.id;
+ let d=a.atk*factionDamageBonus(a,b)*roleBonus,red=Math.min(.75,def/(def+125));d*=1-red;d*=incomingMultiplier(b);
+ if(a.special.charge&&a.chargeReady){d*=1+a.special.charge;a.chargeReady=false;a.runTime=0}
+ b.hp-=d;b.lastDamaged=t;if(b.combatSince===null)b.combatSince=t;
  if(a.fac==='Demônios'||a.special.lifesteal)a.hp=Math.min(a.maxHp,a.hp+d*(a.special.lifesteal||.10));
  if(a.fac==='Alquimistas'||a.special.acid)b.acidStacks=Math.min(5,b.acidStacks+1);
  if(a.fac==='Bestas Marinhas'||a.special.slow)b.slowUntil=Math.max(b.slowUntil,t+2.5);
  if(a.special.radiation)b.radiation=Math.min(.12,b.radiation+a.special.radiation);
  if(b.fac==='Cristalinos'&&a.hp>0){a.hp-=d*.08;if(a.hp<=0)killUnit(a,b,t)}
- if(a.special.splash||a.fac==='Elementais')units.filter(v=>v!==b&&!v.dead&&v.side===b.side&&v.lane===b.lane&&dist(b,v)<90).forEach(v=>{v.hp-=d*.18;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)});
+ if(a.special.splash||a.fac==='Elementais')units.filter(v=>v!==b&&!v.dead&&v.side===b.side&&v.lane===b.lane&&dist(b,v)<90).forEach(v=>{v.hp-=d*.10;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)});
+ if(a.fac==='Músicos'&&a.attackCount%4===3)units.filter(v=>!v.dead&&v.side===a.side&&v.lane===a.lane&&dist(a,v)<260).forEach(v=>v.musicUntil=Math.max(v.musicUntil,t+3));
  effects.push({type:'impact',x:b.x,y:yOf(b),t,color:attackColor(a)});
  if(a.range>4||a.role==='ranged'||a.role==='controller'||a.role==='support')effects.push({type:'beam',x1:a.x,y1:yOf(a)-18,x2:b.x,y2:yOf(b)-14,t,color:attackColor(a)});
  if(b.hp<=0)killUnit(b,a,t)
 }
 function updateTowers(t){
  for(const s of structures){
-   if(s.dead||t-s.lastAttack<s.rate)continue;
+   if(s.dead)continue;
+   towerDamageTaken(s,t);
+   if(t-s.lastAttack<s.rate)continue;
    let sy=laneYAt(s.lane,s.x),v=units.filter(u=>!u.dead&&u.side!==s.side&&u.lane===s.lane&&Math.hypot(u.x-s.x,yOf(u)-sy)<=s.range*PX)
      .sort((a,b)=>Math.hypot(a.x-s.x,yOf(a)-sy)-Math.hypot(b.x-s.x,yOf(b)-sy))[0];
-   if(!v)continue;let d=s.atk*(1-Math.min(.65,v.def/(v.def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;
+   if(!v)continue;let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;
    if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);
    s.lastAttack=t;effects.push({type:'shot',x1:s.x,y1:sy-48,x2:v.x,y2:yOf(v)-10,t,side:s.side})
  }
@@ -312,7 +366,7 @@ function support(u,t){
    if(a){a.hp=Math.min(a.maxHp,a.hp+a.maxHp*s.heal.pct);u.lastSkill=t;u.powerFlash=t}
  }
  if(s.stun&&t-u.lastSkill>=s.stun.cool){
-   let v=nearestEnemy(u,u.range);if(v){let dur=s.stun.duration*(v.fac==='Mentalistas'?.65:1);v.stunUntil=t+dur;u.lastSkill=t;u.powerFlash=t}
+   let v=nearestEnemy(u,u.range);if(v){v.stunUntil=t+controlDuration(v,s.stun.duration,t);u.lastSkill=t;u.powerFlash=t}
  }
 }
 function hud(t){
