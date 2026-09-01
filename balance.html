@@ -15,12 +15,18 @@
   <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
   <p class="muted">26 facções, minions automáticos, 4 torres por lane e geração longa. O simulador usa uma batalha agregada sem renderização para rodar milhares de partidas rapidamente.</p>
   <div class="labControls">
+    <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
+    <div id="fixedFactionControls" class="fixedFactionControls" hidden>
+      <label>Facção 1 <select id="simF1"></select></label>
+      <label>Facção 2 <select id="simF2"></select></label>
+      <button id="randomizeSimFactions" class="secondary">Sortear par</button>
+    </div>
     <label>Partidas <select id="matchCount"><option>1000</option><option>5000</option><option selected>10000</option><option>20000</option><option>50000</option></select></label>
     <label>Candidatas <select id="candidateCount"><option>64</option><option selected>120</option><option>160</option><option>240</option></select></label>
-    <button id="runLab" class="primary">Rodar laboratório</button>
+    <button id="runLab" class="primary">Rodar simulação</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para simular 10.000 partidas.</p>
+  <p id="labStatus" class="muted">Pronto para simular 10.000 partidas com facções aleatórias.</p>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
