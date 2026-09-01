@@ -22,11 +22,12 @@
       <button id="randomizeSimFactions" class="secondary">Sortear par</button>
     </div>
     <label>Partidas <select id="matchCount"><option>1000</option><option>5000</option><option selected>10000</option><option>20000</option><option>50000</option></select></label>
-    <label>Candidatas <select id="candidateCount"><option>64</option><option selected>120</option><option>160</option><option>240</option></select></label>
+    <label>Candidatas <select id="candidateCount"><option>160</option><option selected>240</option><option>320</option></select></label>
     <button id="runLab" class="primary">Rodar simulação</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
   <p id="labStatus" class="muted">Pronto para simular 10.000 partidas com facções aleatórias.</p>
+  <div id="durationCurrent" class="bulkSummary"><span class="muted">A próxima bateria medirá a duração até 90 minutos; 20 minutos agora é referência, não corte.</span></div>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
@@ -35,8 +36,9 @@
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
   <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3</span><h2>Acumulado por unidade</h2></div><div><button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button></div></div>
-  <p class="muted">Separado do baseline antigo. Guarda aparições, partidas ativas, vitórias, derrotas, empates, spawns, impacto e dano estrutural.</p>
+  <p class="muted">Separado do baseline antigo. Guarda aparições, partidas ativas, vitórias, derrotas, empates, spawns, impacto, dano estrutural e distribuição de duração.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
+  <div id="durationLifetime" class="bulkSummary"></div>
   <div id="unitLifetime" class="muted">Banco novo ainda vazio.</div>
 </section>
 <section class="panel"><div class="titleBlock"><div><span class="eyebrow">BATERIAS</span><h2>Histórico local</h2></div></div><p class="muted">As 12 baterias Frontline v3 mais recentes ficam salvas neste navegador.</p><div id="labHistory" class="muted">Nenhuma bateria v3 salva.</div></section>
