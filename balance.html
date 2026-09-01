@@ -12,8 +12,8 @@
 <body>
 <div id="app" class="labPage">
 <section class="panel">
-  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">26 facções, minions automáticos, 4 torres por lane e geração longa. A v3.3 ajusta Vida, Ataque e Defesa com base no baseline de 23.000 partidas.</p>
+  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MAPA V4</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">26 facções, minions automáticos, 4 torres por lane e geração longa. Usa os atributos v3.3 e aproxima o mapa v4: rotas laterais mais longas e rota central curta, porém fortemente defendida.</p>
   <div class="labControls">
     <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
     <div id="fixedFactionControls" class="fixedFactionControls" hidden>
@@ -26,8 +26,8 @@
     <button id="runLab" class="primary">Rodar simulação</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para testar o balanceamento v3.3.</p>
-  <div id="durationCurrent" class="bulkSummary"><span class="muted">As novas baterias ficam separadas do baseline v3.2 para medir o efeito real do patch.</span></div>
+  <p id="labStatus" class="muted">Pronto para testar o balanceamento v3.3 no mapa v4.</p>
+  <div id="durationCurrent" class="bulkSummary"><span class="muted">Laterais: pressão estrutural reduzida pela rota longa. Centro: acesso direto, mas torres com +65% de vida e retaliação mais forte.</span></div>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
@@ -36,7 +36,7 @@
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
   <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3.3</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
-  <p class="muted">O baseline v3.2 é arquivado automaticamente ao abrir esta versão. O banco mostrado aqui mede somente os atributos v3.3.</p>
+  <p class="muted">O baseline v3.2 é arquivado automaticamente. O banco atual mede os atributos v3.3 com a lógica estratégica do mapa v4.</p>
   <p id="jsonStatus" class="muted">JSON Frontline pode ser exportado e importado novamente; confira o ruleset antes de substituir o banco atual.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
   <div id="durationLifetime" class="bulkSummary"></div>
@@ -47,6 +47,7 @@
 <script src="factions-v3.js"></script>
 <script src="balance-patch-v3-3.js"></script>
 <script src="balance-v3.js"></script>
+<script src="balance-map-v4.js"></script>
 <script src="balance-import.js"></script>
 </body>
 </html>
