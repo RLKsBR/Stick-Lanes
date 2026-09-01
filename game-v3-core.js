@@ -22,7 +22,7 @@ const towerTypes=[
 ];
 const BASE_HP=6000,WAVE_INTERVAL=22;
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
-    selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,waveClock=0,waveIndex=0;
+    selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
 let unitSeq=0,showTowerRanges=false;
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
@@ -103,8 +103,16 @@ function buildUI(){
    b.innerHTML=`<b>${u.name}</b><small>${fac} • ${u.cost} • ${u.gen}s</small>`;
    b.onclick=()=>spawnPlayer(i);sb.appendChild(b)
  });
- let status=$('#modeStatus');if(status)status.textContent=gameMode==='robot'?'Robô × Robô':'Jogador × IA';
- lc.classList.toggle('aiControlled',gameMode==='robot')
+ let assisted=gameMode==='robot',status=$('#modeStatus'),speedControls=$('#simSpeedControls');
+ if(status)status.textContent=assisted?'Simulação assistida':'Jogador × IA';
+ if(speedControls){
+   speedControls.hidden=!assisted;
+   speedControls.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+     timeScale=Number(b.dataset.speed)||1;
+     speedControls.querySelectorAll('button').forEach(x=>{let active=x===b;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active))})
+   })
+ }
+ lc.classList.toggle('aiControlled',assisted)
 }
 
 function setCamera(v){cameraX=clamp(v,0,WORLD_W-VIEW_W)}
@@ -129,7 +137,7 @@ canvas.addEventListener('pointerup',e=>{
 });
 
 function reset(){
- units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;waveClock=0;waveIndex=0;unitSeq=0;setCamera(0);
+ units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;simTime=0;timeScale=1;waveClock=0;waveIndex=0;unitSeq=0;setCamera(0);
  Object.keys(spawnCd).forEach(k=>delete spawnCd[k]);
  for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0}
  makeStructures();
@@ -158,7 +166,7 @@ function applySpawnPassive(obj){
  }
 }
 function spawnUnit(side,lane,fac,u,opts={}){
- let born=performance.now()/1000;
+ let born=simTime;
  let obj={id:++unitSeq,side,lane,sub:opts.sub??roleSub(u.role),fac,name:u.name,role:u.role,cost:opts.minion?0:(u.cost||0),
    x:side===1?BASE_X[1]+95:BASE_X[-1]-95,hp:u.hp,maxHp:u.hp,def:u.def,atk:u.atk,speed:u.speed,range:u.range,rate:u.rate,
    special:{...(u.special||{})},ability:u.ability,minion:!!opts.minion,minionType:opts.minionType||null,lastAttack:0,lastSkill:-999,lastDamaged:-999,
@@ -174,7 +182,7 @@ function canSpawnUnit(side,u){
 }
 function spawnPlayer(i){
  if(gameMode==='robot')return;
- let{fac,u}=loadout[i],now=performance.now()/1000,k='p'+i;
+ let{fac,u}=loadout[i],now=simTime,k='p'+i;
  if(gold<u.cost||now<(spawnCd[k]||0)||!canSpawnUnit(1,u))return;
  gold-=u.cost;spawnCd[k]=now+u.gen;spawnUnit(1,selectedLane,fac,u)
 }
@@ -232,12 +240,19 @@ function spawnWave(side){
    })
  }
 }
-function loop(now){
- if(!running)return;
- let dt=Math.min(.04,(now-last)/1000),t=now/1000;last=now;matchTime+=dt;income+=dt;waveClock+=dt;
+function simulationStep(dt){
+ simTime+=dt;matchTime+=dt;income+=dt;waveClock+=dt;
  if(income>=2){let n=Math.floor(income/2);gold+=30*n;enemyGold+=30*n;income-=2*n}
  while(waveClock>=WAVE_INTERVAL){waveClock-=WAVE_INTERVAL;spawnWave(1);spawnWave(-1);waveIndex++}
- if(gameMode==='robot')runSideAI(1,t);runSideAI(-1,t);update(dt,t);updateTowers(t);draw(t);hud(t);
+ if(gameMode==='robot')runSideAI(1,simTime);runSideAI(-1,simTime);update(dt,simTime);updateTowers(simTime)
+}
+function loop(now){
+ if(!running)return;
+ let realDt=Math.min(.04,(now-last)/1000),remaining=realDt*timeScale,steps=0;last=now;
+ while(remaining>.00001&&steps<60&&playerBase>0&&enemyBase>0){
+   let dt=Math.min(.04,remaining);simulationStep(dt);remaining-=dt;steps++
+ }
+ draw(simTime);hud(simTime);
  if(playerBase<=0||enemyBase<=0){running=false;setTimeout(()=>alert(playerBase>0?`Vitória! ${timeText(matchTime)}`:`Derrota! ${timeText(matchTime)}`),50);return}
  requestAnimationFrame(loop)
 }
@@ -298,12 +313,12 @@ function alliesNear(u,r=300){return units.filter(v=>!v.dead&&v.side===u.side&&v!
 function attackRate(u){
  let m=1;if(u.fac==='Orcs'&&u.hp/u.maxHp<.4)m*=.82;
  if(u.fac==='Músicos'&&u.attackCount%4===3)m*=.7;
- if(performance.now()/1000<u.musicUntil)m*=.9;
+ if(simTime<u.musicUntil)m*=.9;
  return Math.max(.35,u.rate*m)
 }
 function move(u,x,dt){
  let d=x-u.x;if(Math.abs(d)<7){u.runTime=0;return}
- let now=performance.now()/1000,slow=now<u.slowUntil ? .92 : 1;
+ let now=simTime,slow=now<u.slowUntil ? .92 : 1;
  u.x+=Math.sign(d)*u.speed*MOVE_SCALE*slow*dt;u.x=clamp(u.x,BASE_X[1]+70,BASE_X[-1]-70);
  u.lastMoved=now;u.runTime+=dt;
  if(u.fac==='Dinossauros'&&u.runTime>=1.5)u.chargeReady=true
