@@ -8,10 +8,16 @@
 </head>
 <body>
 <div id="app">
-  <section id="setup" class="panel">
-    <h1>Stick Lanes</h1>
-    <p class="muted">3 lanes • 3 torres por lane • 2 facções • 8 unidades</p>
-    <div class="row">
+  <section id="setup" class="panel setupPanel">
+    <div class="titleBlock">
+      <div>
+        <span class="eyebrow">PROTÓTIPO</span>
+        <h1>Stick Lanes</h1>
+      </div>
+      <span class="statusPill">mapa 5× • 2.5D</span>
+    </div>
+    <p class="muted">3 lanes que convergem nas bases • 3 torres por lane • 2 facções • 8 unidades</p>
+    <div class="row factionRow">
       <label>Facção 1 <select id="f1"></select></label>
       <label>Facção 2 <select id="f2"></select></label>
     </div>
@@ -22,16 +28,32 @@
 
   <section id="gameUI" hidden>
     <div class="panel hud">
-      <div><b>Ouro:</b> <span id="gold">500</span> <span class="badge">+30 / 2s</span> <span class="badge">abate 10%</span></div>
-      <div><b>Base:</b> <span id="playerBase">3000</span> × <span id="enemyBase">3000</span></div>
-      <div><b>Torres:</b> <span id="playerTowers">9</span> × <span id="enemyTowers">9</span></div>
-      <button id="restart" class="secondary">Recomeçar</button>
+      <div class="hudStat"><span>Ouro</span><b id="gold">500</b><small>+30 / 2s</small></div>
+      <div class="hudStat"><span>Bases</span><b><span id="playerBase">3000</span> × <span id="enemyBase">3000</span></b></div>
+      <div class="hudStat"><span>Torres</span><b><span id="playerTowers">9</span> × <span id="enemyTowers">9</span></b></div>
+      <div class="hudActions"><span class="badge">abate 10%</span><button id="restart" class="secondary">Recomeçar</button></div>
     </div>
+
     <div id="laneControls" class="panel laneControls"></div>
-    <div class="mapWrap"><canvas id="game" width="1800" height="900"></canvas></div>
-    <div class="panel">
+
+    <div class="cameraBar panel compactPanel">
+      <div class="cameraButtons">
+        <button id="camLeft" class="secondary" aria-label="Mover câmera para a esquerda">◀</button>
+        <button id="camHome" class="secondary">Minha base</button>
+        <button id="camMid" class="secondary">Centro</button>
+        <button id="camEnemy" class="secondary">Base inimiga</button>
+        <button id="camRight" class="secondary" aria-label="Mover câmera para a direita">▶</button>
+      </div>
+      <span class="muted">Arraste o campo para mover a câmera. Toque numa lane para selecioná-la.</span>
+    </div>
+
+    <div class="mapShell">
+      <canvas id="game" width="1800" height="1000"></canvas>
+    </div>
+
+    <div class="panel spawnPanel">
       <div id="spawnbar" class="spawnbar"></div>
-      <p class="muted">Toque numa lane do mapa e depois numa unidade. A ordem escolhida vale para toda aquela lane.</p>
+      <p class="muted">A ordem escolhida vale para toda a lane. Perto das bases, as três rotas se juntam num único corredor de ataque.</p>
     </div>
   </section>
 </div>
