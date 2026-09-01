@@ -24,7 +24,7 @@ O menu inicial separa três fluxos:
 - Bases com **6.000 de vida**.
 - Cada exército combina **2 facções** e escolhe **8 unidades compráveis**.
 - Unidades compráveis têm tempos de geração bem mais longos, atualmente na faixa de **28 a 120 segundos**.
-- A direção de balanceamento é buscar partidas de aproximadamente **15 minutos ou mais**.
+- A duração agora é medida até a destruição da base, com limite técnico de **90 minutos**. Os **20 minutos** são apenas uma referência de leitura, não o encerramento automático da simulação.
 - Economia atual: **+30 de ouro a cada 2 segundos**.
 
 ## Minions
@@ -106,12 +106,16 @@ O projeto possui um simulador separado, sem renderização, para testar grandes 
 
 Estado atual:
 
-- **10.000 partidas** como padrão de uma bateria.
+- **10.000 partidas** e **240 composições candidatas** como padrão de uma bateria.
 - Opções maiores disponíveis no próprio laboratório.
 - As facções podem ser sorteadas automaticamente para cada composição ou fixadas pelo usuário.
 - Depois de receber as facções, cada robô escolhe e testa automaticamente seu elenco de oito tropas.
 - O robô economiza ouro até colocar todas as oito tropas escolhidas em campo.
 - O relatório mede vitórias, derrotas, empates, spawns, dano, dano estrutural e impacto das unidades.
+- O relatório de duração separa partidas concluídas das que atingiram o limite técnico e mostra média das concluídas, P50 e P90; se houver truncamentos, a média total é marcada como limite inferior.
+- Partidas que ainda não destruíram uma base no limite técnico são registradas como impasse/empate, sem inventar um vencedor pela pontuação intermediária.
+- O simulador credita o multiplicador de demolição das tropas de cerco no dano estrutural e considera as principais passivas de facção ao avaliar uma composição.
+- O draft automatizado garante cobertura das unidades testáveis e exige ao menos uma opção de cerco por composição, reduzindo resultados enganosos causados por tropas raramente escolhidas.
 - O win rate principal de uma unidade considera jogos em que ela **realmente entrou em campo**, evitando atribuir desempenho a unidades que ficaram apenas no loadout.
 - Existe um banco acumulado local por unidade.
 - Resultados e composições podem ser salvos no `localStorage`.
