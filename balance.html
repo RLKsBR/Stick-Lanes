@@ -6,7 +6,7 @@
 <title>Stick Lanes — Laboratório</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
+.labPage{max-width:1250px;margin:auto}.labGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.labResults{overflow:auto}.labResults table{width:100%;border-collapse:collapse;font-size:.85rem}.labResults th,.labResults td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}.labResults th{color:#d9cda9}.meter{height:8px;background:#242832;border-radius:99px;overflow:hidden;min-width:90px}.meter i{display:block;height:100%;background:#d8c98d}.compCard{padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(0,0,0,.16);margin-bottom:8px}.compUnits{font-size:.8rem;color:#b5b8c1;margin:5px 0}.labControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.labControls label{display:flex;gap:6px;align-items:center}.progress{height:10px;background:#222630;border-radius:99px;overflow:hidden;margin:10px 0}.progress div{height:100%;width:0;background:linear-gradient(90deg,#8d7b45,#e0d29a);transition:.1s width}.warning{color:#e5b5a3}.good{color:#a9dbb3}.historyActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.historyMeta{font-size:.76rem;color:#a9adb7;margin-top:3px}@media(max-width:800px){.labGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -28,7 +28,9 @@
 <section class="panel"><h2>Diagnóstico rápido</h2><div id="diagnostics" class="muted">Rode as simulações primeiro.</div></section>
 </div>
 <section class="panel labResults"><h2>Unidades</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
+<section class="panel"><div class="titleBlock"><div><span class="eyebrow">HISTÓRICO LOCAL</span><h2>Resultados salvos</h2></div><button id="clearLabHistory" class="secondary">Limpar histórico</button></div><p class="muted">Cada laboratório concluído é salvo automaticamente neste navegador.</p><div id="labHistory" class="muted">Nenhum resultado salvo ainda.</div></section>
 </div>
 <script src="balance.js"></script>
+<script src="balance-history.js"></script>
 </body>
 </html>
