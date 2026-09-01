@@ -12,15 +12,12 @@ if(!btn||!input)return;
 const FIELDS=['appear','wins','losses','draws','active','activeWins','activeLosses','activeDraws','spawns','impact','structure'];
 const num=v=>{v=Number(v);return Number.isFinite(v)&&v>=0?v:0};
 const say=(text,kind='muted')=>{if(!status)return;status.className=kind;status.textContent=text};
-function blankDuration(){return{totalSeconds:0,completedSeconds:0,completedMatches:0,timedOutMatches:0,histogram:Array(91).fill(0)}}
+function blankDuration(){return{totalSeconds:0,completedSeconds:0,completedMatches:0,timedOutMatches:0,histogram:[0]}}
 function normalizeDuration(src){
  const out=blankDuration();if(!src||typeof src!=='object')return out;
  out.totalSeconds=num(src.totalSeconds);out.completedSeconds=num(src.completedSeconds);
  out.completedMatches=Math.floor(num(src.completedMatches));out.timedOutMatches=Math.floor(num(src.timedOutMatches));
- if(Array.isArray(src.histogram)){
-   const raw=src.histogram.map(num),limit=out.histogram.length;
-   for(let i=0;i<raw.length;i++)out.histogram[Math.min(i,limit-1)]+=raw[i];
- }
+ if(Array.isArray(src.histogram)&&src.histogram.length){out.histogram=src.histogram.map(num)}
  return out
 }
 function currentLike(raw){
@@ -30,6 +27,13 @@ function currentLike(raw){
 }
 function legacyLike(raw){
  return !!(raw&&typeof raw==='object'&&raw.units&&typeof raw.units==='object'&&Object.values(raw.units).some(u=>u&&('damage' in u||'kills' in u||'deaths' in u)))
+}
+function normalizeProfiles(v){
+ if(!Array.isArray(v))return[];
+ return v.slice(0,500).map(p=>({
+  pair:Array.isArray(p?.pair)?p.pair.map(String).slice(0,2):[],games:Math.floor(num(p?.games)),wins:Math.floor(num(p?.wins)),losses:Math.floor(num(p?.losses)),draws:Math.floor(num(p?.draws)),
+  behavior:String(p?.behavior||'').slice(0,1000),policy:p?.policy&&typeof p.policy==='object'?Object.fromEntries(Object.entries(p.policy).filter(([,x])=>Number.isFinite(Number(x))).map(([k,x])=>[String(k),Number(x)])):{}
+ }))
 }
 function normalizeCurrent(raw){
  const units={};
@@ -52,13 +56,16 @@ function normalizeCurrent(raw){
    matches,
    duration,
    units,
-   updatedAt:Math.floor(num(raw.updatedAt))||Date.now()
+   updatedAt:Math.floor(num(raw.updatedAt))||Date.now(),
+   simulationMode:String(raw.simulationMode||''),
+   noFixedTimeLimit:!!raw.noFixedTimeLimit,
+   strategyProfiles:normalizeProfiles(raw.strategyProfiles)
  }
 }
 function archiveLegacy(raw,fileName){
  const archive={importedAt:Date.now(),fileName,reason:'schema legado não possui active/impact compatíveis com Frontline v3',data:raw};
  localStorage.setItem(LEGACY_KEY,JSON.stringify(archive));
- say('JSON antigo reconhecido e arquivado separadamente. Ele não foi somado ao Frontline v3 porque as métricas não são equivalentes.','warning')
+ say('JSON antigo reconhecido e arquivado separadamente. Ele não foi somado ao banco atual porque as métricas não são equivalentes.','warning')
 }
 async function importFile(file){
  let raw;
@@ -69,12 +76,13 @@ async function importFile(file){
  try{normalized=normalizeCurrent(raw)}catch(err){say('JSON recusado: '+err.message,'warning');return}
  const current=localStorage.getItem(CURRENT_KEY);
  const ruleNote=typeof SL_RULESET_VERSION!=='undefined'&&normalized.ruleset!==SL_RULESET_VERSION?`\n\nAtenção: arquivo ${normalized.ruleset}; jogo atual ${SL_RULESET_VERSION}.`:'';
- const ok=confirm(`Importar ${normalized.matches.toLocaleString('pt-BR')} simulações e ${Object.keys(normalized.units).length} unidades?${current?'\n\nO banco local atual será salvo em backup antes da substituição.':''}${ruleNote}`);
+ const strategyNote=normalized.strategyProfiles.length?`\n\nPerfis estratégicos: ${normalized.strategyProfiles.length}.`:'';
+ const ok=confirm(`Importar ${normalized.matches.toLocaleString('pt-BR')} simulações e ${Object.keys(normalized.units).length} unidades?${current?'\n\nO banco local atual será salvo em backup antes da substituição.':''}${strategyNote}${ruleNote}`);
  if(!ok){say('Importação cancelada.');return}
  if(current)localStorage.setItem(BACKUP_KEY,current);
  localStorage.setItem(CURRENT_KEY,JSON.stringify(normalized));
  if(typeof renderDatabase==='function')renderDatabase();
- say(`Importado: ${normalized.matches.toLocaleString('pt-BR')} simulações • ${Object.keys(normalized.units).length} unidades • ${normalized.ruleset}.`,'good')
+ say(`Importado: ${normalized.matches.toLocaleString('pt-BR')} simulações • ${Object.keys(normalized.units).length} unidades • ${normalized.strategyProfiles.length} perfis estratégicos • ${normalized.ruleset}.`,'good')
 }
 btn.onclick=()=>input.click();
 input.onchange=()=>{const file=input.files&&input.files[0];if(file)importFile(file);input.value=''};
