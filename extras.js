@@ -1,4 +1,14 @@
 (()=>{
+const mapScript=document.createElement('script');
+mapScript.src='map-sci-fi-v4.js';
+mapScript.onload=()=>{
+  const pill=document.querySelector('.statusPill');
+  if(pill)pill.textContent='22.500 • mapa sci-fi • 3×3 sub-lanes';
+  const cam=document.querySelector('.cameraBar .muted');
+  if(cam)cam.textContent='Rotas superior e inferior são mais longas e flanqueadoras. A central é mais curta, mas os bastiões têm muito mais vida, alcance e resistência.';
+};
+document.head.appendChild(mapScript);
+
 const KEY='stickLanesCompositions.v1';
 const nameInput=document.querySelector('#compName');
 const saveBtn=document.querySelector('#saveComp');
