@@ -12,8 +12,8 @@
 <body>
 <div id="app" class="labPage">
 <section class="panel">
-  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MINIONS V2</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
-  <p class="muted">Minions usam velocidade uniforme e ondas de 1 tanque, 2 lutadores e 3 unidades à distância por lane. O simulador usa os atributos v3.3 e a defesa central reforçada.</p>
+  <div class="titleBlock"><div><span class="eyebrow">FRONTLINE V3.3 • MINIONS V2 • TORRETAS V1</span><h1>Laboratório de balanceamento</h1></div><a class="labLink" href="index.html">← Voltar ao jogo</a></div>
+  <p class="muted">Minions usam velocidade uniforme e ondas de 1 tanque, 2 lutadores e 3 unidades à distância por lane. O mapa agora inclui duas torretas entre cada par de torres principais, preservando janelas de avanço.</p>
   <div class="labControls">
     <label>Facções <select id="simFactionMode"><option value="random" selected>Aleatórias a cada composição</option><option value="fixed">Escolher um par</option></select></label>
     <div id="fixedFactionControls" class="fixedFactionControls" hidden>
@@ -26,8 +26,8 @@
     <button id="runLab" class="primary">Rodar simulação</button>
   </div>
   <div class="progress"><div id="progressBar"></div></div>
-  <p id="labStatus" class="muted">Pronto para testar a formação 1/2/3 dos minions.</p>
-  <div id="durationCurrent" class="bulkSummary"><span class="muted">Cada onda agora representa 6 minions por lane: tanque na frente, lutadores no meio e ranged atrás.</span></div>
+  <p id="labStatus" class="muted">Pronto para testar minions 1/2/3 e torretas auxiliares.</p>
+  <div id="durationCurrent" class="bulkSummary"><span class="muted">Cobertura defensiva aproximada: ~80% na central e ~76% nas laterais; o restante fica como janela de avanço.</span></div>
 </section>
 <div class="labGrid">
 <section class="panel"><h2>Melhores composições</h2><div id="bestComps" class="muted">Rode a bateria.</div></section>
@@ -36,7 +36,7 @@
 <section class="panel labResults"><h2>Unidades — bateria atual</h2><div id="unitTable" class="muted">Sem resultados ainda.</div></section>
 <section class="panel labResults">
   <div class="titleBlock"><div><span class="eyebrow">BANCO FRONTLINE V3.3</span><h2>Acumulado por unidade</h2></div><div><button id="importUnitBalance" class="secondary">Importar JSON</button> <button id="exportUnitBalance" class="secondary">Exportar JSON</button> <button id="clearUnitBalance" class="secondary">Zerar banco</button><input id="importBalanceFile" type="file" accept="application/json,.json" hidden></div></div>
-  <p class="muted">O banco atual usa os atributos v3.3 e a nova pressão de onda dos minions.</p>
+  <p class="muted">O banco atual usa os atributos v3.3, a nova pressão de onda dos minions e a defesa auxiliar por torretas.</p>
   <p id="jsonStatus" class="muted">JSON Frontline pode ser exportado e importado novamente; confira o ruleset antes de substituir o banco atual.</p>
   <div id="bulkSummary" class="bulkSummary"></div>
   <div id="durationLifetime" class="bulkSummary"></div>
@@ -50,6 +50,7 @@
 <script src="balance-v3.js"></script>
 <script src="balance-map-v4.js"></script>
 <script src="balance-minion-wave-v2.js"></script>
+<script src="balance-turrets-v1.js"></script>
 <script src="balance-import.js"></script>
 </body>
 </html>
