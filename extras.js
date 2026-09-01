@@ -4,11 +4,16 @@ mapScript.src='map-sci-fi-v4.js';
 mapScript.onload=()=>{
   const assetScript=document.createElement('script');
   assetScript.src='map-assets-v4.js';
+  assetScript.onload=()=>{
+    const cameraScript=document.createElement('script');
+    cameraScript.src='map-2_5d-v5.js';
+    document.head.appendChild(cameraScript);
+  };
   document.head.appendChild(assetScript);
   const pill=document.querySelector('.statusPill');
-  if(pill)pill.textContent='22.500 • mapa sci-fi • assets vetoriais';
+  if(pill)pill.textContent='22.500 • mapa 2D e meio • zoom por pinça';
   const cam=document.querySelector('.cameraBar .muted');
-  if(cam)cam.textContent='Rotas superior e inferior são mais longas e flanqueadoras. A central é mais curta, mas os bastiões têm muito mais vida, alcance e resistência. Movimento global +70%.';
+  if(cam)cam.textContent='Arraste em qualquer direção e use pinça para aproximar/afastar. O mapa muda de detalhe conforme o zoom; a rota inferior faz o grande contorno em L.';
 };
 document.head.appendChild(mapScript);
 
