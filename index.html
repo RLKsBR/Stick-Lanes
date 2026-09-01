@@ -10,15 +10,15 @@
 <div id="app">
   <section id="mainMenu" class="panel mainMenu">
     <div class="menuHero">
-      <span class="eyebrow">FRONTLINE V3.1</span>
+      <span class="eyebrow">FRONTLINE V3</span>
       <h1>Stick Lanes</h1>
-      <p class="muted">Escolha como entrar na guerra.</p>
     </div>
     <div class="menuChoices">
-      <button id="menuPlay" class="menuChoice primary"><b>Jogar</b><small>Monte duas facções e escolha suas oito tropas.</small></button>
-      <button id="menuRobots" class="menuChoice secondary"><b>Robô × Robô</b><small>Facções e tropas aleatórias em Simulação assistida.</small></button>
-      <a href="balance.html" class="menuChoice secondary"><b>Simulação</b><small>Milhares de partidas sem renderização, com escolha fixa ou aleatória.</small></a>
+      <button id="menuPlay" class="menuChoice primary"><b>Player versus IA</b></button>
+      <button id="menuRobots" class="menuChoice secondary"><b>Simulação assistida</b></button>
+      <a href="balance.html" class="menuChoice secondary"><b>Simulação</b></a>
     </div>
+    <p class="muted menuCredits">Créditos: <strong>Ruan Lukas</strong></p>
   </section>
 
   <section id="setup" class="panel setupPanel" hidden>
@@ -57,7 +57,7 @@
       <div class="hudStat"><span>Próxima onda</span><b id="waveTimer">22s</b><small>9 minions por lado</small></div>
       <div class="hudStat"><span>Bases</span><b><span id="playerBase">6000</span> × <span id="enemyBase">6000</span></b></div>
       <div class="hudStat"><span>Torres</span><b><span id="playerTowers">12</span> × <span id="enemyTowers">12</span></b></div>
-      <div class="hudActions"><span id="modeStatus" class="badge">Jogador × IA</span><div id="simSpeedControls" class="simSpeedControls" hidden><span class="muted">Velocidade</span><button class="secondary active" data-speed="1">1×</button><button class="secondary" data-speed="3">3×</button><button class="secondary" data-speed="10">10×</button><button class="secondary" data-speed="20">20×</button></div><span class="badge">counter minion +20%</span><button id="restart" class="secondary">Recomeçar</button></div>
+      <div class="hudActions"><span id="modeStatus" class="badge">Player versus IA</span><div id="simSpeedControls" class="simSpeedControls" hidden><span class="muted">Velocidade</span><button class="secondary active" data-speed="1">1×</button><button class="secondary" data-speed="3">3×</button><button class="secondary" data-speed="10">10×</button><button class="secondary" data-speed="20">20×</button></div><span class="badge">counter minion +20%</span><button id="restart" class="secondary">Recomeçar</button></div>
     </div>
     <div id="laneControls" class="panel laneControls"></div>
     <div class="cameraBar panel compactPanel">
