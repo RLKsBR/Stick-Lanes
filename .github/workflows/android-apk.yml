@@ -9,6 +9,7 @@ on:
       - '*.js'
       - '*.css'
       - 'assets/**'
+      - 'tests/**'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
@@ -23,6 +24,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run assisted simulation smoke test
+        run: node tests/smoke-assisted.js
+
+      - name: Run observer freeze regression test
+        run: node tests/no-observer-loop.js
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
