@@ -1,5 +1,5 @@
-/* Corrige a antiga gambiarra de min-width em portrait e trata landscape como estado real. */
-html.sl-match-active,html.sl-match-active body{margin:0;width:100%;height:100%;overflow:hidden;background:#050806}
+/* Stick Lanes — layout responsivo; fullscreen e orientação nunca são forçados. */
+html.sl-match-active,html.sl-match-active body{margin:0;width:100%;height:100%;background:#050806}
 html.sl-match-active #app{max-width:none;width:100%;height:100%;margin:0;padding:0}
 html.sl-match-active #gameUI{position:fixed;inset:0;width:100%;height:100%;min-width:0!important;padding:0 6px 6px;overflow:hidden}
 html.sl-match-active #gameUI>.hud{margin-bottom:3px}
@@ -8,12 +8,20 @@ html.sl-match-active #gameUI .cameraBar{margin-bottom:3px}
 html.sl-match-active #gameUI .mapShell{height:calc(100dvh - 192px);min-height:0!important;margin:0;border-radius:8px}
 html.sl-match-active #gameUI .spawnPanel{margin-top:3px}
 html.sl-match-active #gameUI #game{width:100%;height:100%;object-fit:fill}
-#rotateNotice{position:fixed;inset:0;z-index:9999;display:grid;place-content:center;gap:8px;text-align:center;background:#080c09;color:#f3f1eb;font:600 16px system-ui}
-#rotateNotice b{font-size:26px;color:#ffb25f}#rotateNotice span{color:#bfc5c0}#rotateNotice[hidden]{display:none}
+html.sl-match-active #fullscreenToggle{white-space:nowrap}
+
+/* Portrait é permitido: nada de overlay, nada de orientation.lock. */
 @media (orientation:portrait){
-  #gameUI{min-width:0!important}
-  body:has(#gameUI:not([hidden])){overflow:hidden!important}
+  html.sl-match-active,html.sl-match-active body{height:auto;min-height:100%;overflow:auto!important}
+  html.sl-match-active #app{height:auto;min-height:100dvh}
+  html.sl-match-active #gameUI{position:relative;inset:auto;height:auto;min-height:100dvh;overflow:visible;padding:6px}
+  html.sl-match-active #gameUI>.hud,
+  html.sl-match-active #gameUI .laneControls,
+  html.sl-match-active #gameUI .cameraBar,
+  html.sl-match-active #gameUI .spawnPanel{margin-bottom:6px}
+  html.sl-match-active #gameUI .mapShell{height:52dvh;min-height:300px!important;max-height:560px;margin:0 0 6px}
 }
+
 @media (max-height:560px) and (orientation:landscape){
   html.sl-match-active #gameUI>.hud{grid-template-columns:repeat(5,minmax(64px,1fr)) minmax(160px,1.4fr);gap:3px;padding:3px 5px}
   html.sl-match-active #gameUI .hudStat{min-height:29px;padding:2px 4px}
