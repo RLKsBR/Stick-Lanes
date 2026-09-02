@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const VERSION='frontline-v3.4-survivability';
+const VERSION='frontline-v3.4.1-survivability-support';
 if(window.SL_SURVIVABILITY_PATCH_VERSION===VERSION)return;
 
 const ROLE_TUNING={
