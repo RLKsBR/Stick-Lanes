@@ -27,7 +27,7 @@ let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
 const CELL_SIZE=520;
-let unitSeq=0,structureSeq=0,showTowerRanges=false,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
+let unitSeq=0,structureSeq=0,showTowerRanges=true,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
     unitCells={1:[new Map(),new Map(),new Map()],'-1':[new Map(),new Map(),new Map()]},
     waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
@@ -140,7 +140,10 @@ $('#camHome').onclick=()=>setCamera(0);
 $('#camMid').onclick=()=>setCamera((WORLD_W-VIEW_W)/2);
 $('#camEnemy').onclick=()=>setCamera(WORLD_W-VIEW_W);
 const rangeButton=$('#towerRanges');
-if(rangeButton)rangeButton.onclick=()=>{showTowerRanges=!showTowerRanges;rangeButton.classList.toggle('active',showTowerRanges);rangeButton.textContent=showTowerRanges?'Alcance: ligado':'Alcance das torres'};
+if(rangeButton){
+ rangeButton.classList.toggle('active',showTowerRanges);rangeButton.textContent=showTowerRanges?'Alcance: ligado':'Alcance das torres';rangeButton.setAttribute('aria-pressed',String(showTowerRanges));
+ rangeButton.onclick=()=>{showTowerRanges=!showTowerRanges;rangeButton.classList.toggle('active',showTowerRanges);rangeButton.textContent=showTowerRanges?'Alcance: ligado':'Alcance das torres';rangeButton.setAttribute('aria-pressed',String(showTowerRanges))}
+}
 let drag=null;
 canvas.addEventListener('pointerdown',e=>{let r=canvas.getBoundingClientRect();drag={id:e.pointerId,startX:e.clientX,lastX:e.clientX,moved:false,scale:VIEW_W/r.width};canvas.setPointerCapture(e.pointerId)});
 canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;let dx=e.clientX-drag.lastX;if(Math.abs(e.clientX-drag.startX)>7)drag.moved=true;setCamera(cameraX-dx*drag.scale);drag.lastX=e.clientX});
