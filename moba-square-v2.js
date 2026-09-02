@@ -28,6 +28,10 @@ function routePoint(lane,t,offset=0){
 }
 function unitPos(u){return routePoint(u.lane,logicalT(u.x),(u.sub||0)*34)}
 function structurePos(s){return routePoint(s.lane,logicalT(s.x),0)}
+function projectedTowerRange(s){
+  const route=RM[s.lane]||RM[1],worldLength=BASE_X[-1]-BASE_X[1];
+  return (s.range||4)*PX*route.total/worldLength
+}
 
 let vZoom=.62,vCamX=0,vCamY=0;
 const MIN_Z=.40,MAX_Z=1.35;
@@ -100,7 +104,11 @@ function drawBasePlatform(side){
 function drawStructure(s,t){
   if(s.dead)return;const p=structurePos(s),c=s.side===1?ORANGE:RED,aux=!!s.auxiliary,tier=s.visualTier||1;
   if(p.x<vCamX-260||p.x>vCamX+visibleW()+260||p.y<vCamY-260||p.y>vCamY+visibleH()+260)return;
-  if(showTowerRanges){const rr=(s.range||4)*20;ctx.strokeStyle=c;ctx.globalAlpha=.16;ctx.lineWidth=3;ctx.beginPath();ctx.arc(p.x,p.y,rr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+  if(showTowerRanges){
+    const rr=projectedTowerRange(s);ctx.save();ctx.fillStyle=c;ctx.globalAlpha=aux?.035:.055;ctx.beginPath();ctx.arc(p.x,p.y,rr,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=aux?.22:.42;ctx.strokeStyle=c;ctx.lineWidth=aux?2:3;ctx.setLineDash(aux?[7,7]:[14,9]);ctx.beginPath();ctx.arc(p.x,p.y,rr,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    if(!aux&&vZoom>.5){ctx.globalAlpha=.86;ctx.fillStyle=c;ctx.font='700 16px system-ui';ctx.textAlign='center';ctx.fillText(s.range+'u',p.x,p.y-rr+20)}ctx.restore()
+  }
   ctx.save();ctx.translate(p.x,p.y);
   ctx.fillStyle='#0a1013';ctx.beginPath();ctx.arc(0,10,aux?58:86+tier*6,0,Math.PI*2);ctx.fill();ctx.strokeStyle=c;ctx.globalAlpha=.35;ctx.lineWidth=4;ctx.stroke();ctx.globalAlpha=1;
   ctx.fillStyle='#2b3438';if(aux){ctx.fillRect(-27,-20,54,50);ctx.fillStyle='#4b565a';ctx.fillRect(-19,-44,38,27)}else{ctx.beginPath();ctx.moveTo(-34,-8);ctx.lineTo(34,-8);ctx.lineTo(43,46);ctx.lineTo(-43,46);ctx.closePath();ctx.fill();ctx.fillStyle='#4b565a';ctx.fillRect(-28,-64,56,58)}
