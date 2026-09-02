@@ -1,15 +1,12 @@
-/* Stick Lanes — layout mobile + tela cheia opcional */
+/* Stick Lanes — layout mobile + tela cheia opcional, sem interferir no boot */
 (function(){
 'use strict';
 
 const root=document.documentElement;
-const gameSection=()=>document.getElementById('gameUI');
+const gameUI=document.getElementById('gameUI');
 let fullscreenButton=null;
 
-function isMatchActive(){
-  const ui=gameSection();
-  return !!ui&&!ui.hidden;
-}
+function isMatchActive(){return !!gameUI&&!gameUI.hidden}
 
 function ensureFullscreenButton(){
   if(fullscreenButton&&fullscreenButton.isConnected)return fullscreenButton;
@@ -37,7 +34,7 @@ function syncLayout(){
     button.hidden=!active;
     button.textContent=fullscreen?'⛶ Sair da tela cheia':'⛶ Tela cheia';
     button.setAttribute('aria-pressed',fullscreen?'true':'false');
-    const supported=!!(document.documentElement.requestFullscreen&&document.exitFullscreen);
+    const supported=typeof document.documentElement.requestFullscreen==='function'&&typeof document.exitFullscreen==='function';
     button.disabled=!supported;
     button.title=supported?'Tela cheia opcional — a orientação do aparelho não será forçada.':'Tela cheia não é suportada neste navegador.';
   }
@@ -49,7 +46,7 @@ async function toggleFullscreen(){
   try{
     if(document.fullscreenElement){
       await document.exitFullscreen();
-    }else if(document.documentElement.requestFullscreen){
+    }else if(typeof document.documentElement.requestFullscreen==='function'){
       await document.documentElement.requestFullscreen({navigationUI:'hide'});
     }
   }catch(err){
@@ -60,17 +57,12 @@ async function toggleFullscreen(){
 }
 
 /*
- * Importante para Android:
- * launchBattle NÃO solicita fullscreen e NÃO trava a orientação.
- * A partida abre na orientação atual do aparelho; tela cheia é sempre opt-in.
+ * Não intercepta launchBattle, não pede fullscreen sozinho e não trava orientação.
+ * O layout acompanha somente a visibilidade real do gameUI.
  */
-const oldLaunch=launchBattle;
-launchBattle=function(...args){
-  const result=oldLaunch.apply(this,args);
-  syncLayout();
-  return result;
-};
-
+if(gameUI&&typeof MutationObserver==='function'){
+  new MutationObserver(syncLayout).observe(gameUI,{attributes:true,attributeFilter:['hidden']});
+}
 window.addEventListener('resize',syncLayout,{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(syncLayout,80),{passive:true});
 document.addEventListener('fullscreenchange',syncLayout);
