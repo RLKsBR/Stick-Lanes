@@ -46,13 +46,16 @@ async function runCase(name,viewport){
     health:window.SL_RUNTIME_HEALTH?.snapshot?.()||null,
     error:window.SL_LAST_RUNTIME_ERROR||null,
     laneCards:document.querySelectorAll('#laneControls .laneControl').length,
+    globalCommands:document.querySelectorAll('#laneControls .laneControlAll button').length,
+    adaptive:document.querySelector('#modeStatus')?.textContent.includes('IA adaptativa'),
     canvasRect:(()=>{const r=document.querySelector('#game')?.getBoundingClientRect();return r?{w:r.width,h:r.height}:null})()
   }));
 
   if(!state1.menuHidden||state1.gameHidden)throw new Error(`${name}: partida não substituiu o menu`);
   if(state1.running!==true)throw new Error(`${name}: loop da partida não ficou running`);
   if(state1.structures!==60)throw new Error(`${name}: esperado 60 estruturas, recebeu ${state1.structures}`);
-  if(state1.laneCards!==3)throw new Error(`${name}: esperado 3 controles de lane, recebeu ${state1.laneCards}`);
+  if(state1.laneCards!==4||state1.globalCommands!==5)throw new Error(`${name}: barra global/lanes incompleta: ${state1.laneCards} cartões, ${state1.globalCommands} comandos globais`);
+  if(!state1.adaptive)throw new Error(`${name}: IA adaptativa não foi ativada`);
   if(state1.fullscreen)throw new Error(`${name}: fullscreen entrou automaticamente`);
   if(state1.error)throw new Error(`${name}: erro runtime ${JSON.stringify(state1.error)}`);
   if(!state1.health||state1.health.rafFrames<10)throw new Error(`${name}: RAF não progrediu: ${JSON.stringify(state1.health)}`);

@@ -167,6 +167,7 @@ const document = {
     if (selector === '.unitBtn') return allElements.filter(x => x.classList.contains('unitBtn'));
     if (selector === '.spawn') return allElements.filter(x => x.classList.contains('spawn'));
     if (selector === '.laneControl') return allElements.filter(x => x.classList.contains('laneControl'));
+    if (selector === '#laneControls .laneControl') return byId('laneControls').children.filter(x => x.classList.contains('laneControl'));
     return [];
   }
 };
@@ -225,7 +226,7 @@ const staticScripts = [
   'game-v3-core.js', 'game-v3-visuals.js', 'extras.js',
   'map-sci-fi-v4.js', 'map-assets-v4.js', 'map-2_5d-v5.js',
   'map-layout-v5.js', 'movement-v6.js', 'minion-wave-v2.js',
-  'turret-defense-v1.js',
+  'turret-defense-v1.js', 'live-strategy-ai-v1.js',
   'visual-lote-01.js', 'visual-lote-02.js', 'visual-lote-03.js',
   'visual-lote-04.js', 'visual-lote-05.js', 'visual-team-structures.js',
   'visual-team-range.js', 'frontline-moba-v1.js', 'moba-square-v2.js',
@@ -242,6 +243,10 @@ while (dynamicScripts.length) {
 
 if (byId('menuPlay').disabled || byId('menuRobots').disabled) throw new Error('menu está bloqueado antes do clique');
 byId('menuRobots').click();
+const globalAttack=byId('laneControls').children[0].querySelectorAll('button').find(button=>button.dataset.v==='attack');
+if(!globalAttack)throw new Error('comando global Atacar não foi criado');
+globalAttack.click();
+const globalOrderApplied=vm.runInContext(`orders[1].every(order=>order==='attack')`,context);
 for (let frame = 1; frame <= 650; frame++) {
   const callback = rafQueue.shift();
   if (!callback) throw new Error(`quadro ${frame} não foi agendado`);
@@ -263,7 +268,16 @@ const state = vm.runInContext(`({
   unitSubs:[...new Set(units.filter(unit=>unit.minion).map(unit=>Math.round(unit.sub)))].sort((a,b)=>a-b),
   mainProgress:[0,1,2].map(lane=>structures.filter(s=>s.side===1&&s.lane===lane&&!s.auxiliary).map(s=>s.ownProgress)),
   uniqueStructureIds:new Set(structures.map(s=>s.id)).size,
-  turretPairs:[...new Set(structures.filter(s=>s.auxiliary).map(s=>s.pairId))].map(id=>structures.filter(s=>s.pairId===id).map(s=>({x:s.x,sub:s.subOffset})))
+  turretPairs:[...new Set(structures.filter(s=>s.auxiliary).map(s=>s.pairId))].map(id=>structures.filter(s=>s.pairId===id).map(s=>({x:s.x,sub:s.subOffset}))),
+  gapCoverage:[1,-1].flatMap(side=>[0,1,2].flatMap(lane=>{
+    const line=structures.filter(s=>s.side===side&&s.lane===lane&&!s.auxiliary).sort((a,b)=>a.ownProgress-b.ownProgress);
+    return line.slice(0,-1).map((a,i)=>{
+      const b=line[i+1],pairId=side+':'+lane+':'+i,pair=structures.filter(s=>s.side===side&&s.lane===lane&&s.auxiliary&&s.pairId===pairId),gap=(b.ownProgress-a.ownProgress)*(BASE_X[-1]-BASE_X[1]);
+      return (a.range+b.range+pair[0].range+pair[1].range)*PX/gap
+    })
+  })),
+  aiAdjustments:SL_LIVE_STRATEGY_AI.getMemory().totalAdjustments,
+  modeText:document.querySelector('#modeStatus').textContent
 })`, context);
 
 const collision = vm.runInContext(`(()=>{
@@ -273,6 +287,7 @@ const collision = vm.runInContext(`(()=>{
 })()`, context);
 
 if (!byId('mainMenu').hidden) throw new Error('menu principal permaneceu visível');
+if (!globalOrderApplied) throw new Error('comando global não aplicou Atacar às três lanes');
 if (byId('gameUI').hidden) throw new Error('interface da batalha permaneceu oculta');
 if (state.gameMode !== 'robot' || !state.running) throw new Error('simulação assistida não iniciou');
 if (state.loadoutSize !== 8 || state.enemyLoadoutSize !== 8) throw new Error('IA não montou os dois baralhos');
@@ -283,10 +298,14 @@ if (Math.abs(state.mapMeta.routeLengths[0] - state.mapMeta.routeLengths[2]) > 1)
 if (!(state.mapMeta.routeLengths[1] < state.mapMeta.routeLengths[0])) throw new Error('mid deveria ser a rota mais curta');
 if (state.mainProgress.some(row=>JSON.stringify(row)!==JSON.stringify([.1,.2,.3,.4]))) throw new Error('torres principais não usam posições percentuais comuns');
 if (!state.turretPairs.every(pair=>pair.length===2&&pair[0].x===pair[1].x&&Math.abs(pair[0].sub)===.75&&Math.abs(pair[1].sub)===.75)) throw new Error('torretas não estão emparelhadas lateralmente');
+if (!state.gapCoverage.every(value=>value>=.75)) throw new Error(`cobertura defensiva abaixo de 75%: ${state.gapCoverage.join(', ')}`);
+if (state.aiAdjustments<1||!state.modeText.includes('IA adaptativa')) throw new Error('IA ao vivo não registrou aprendizagem adaptativa');
 if (!state.unitSubs.includes(-2) || !state.unitSubs.includes(2)) throw new Error('formação não ocupa as cinco sub-lanes');
 if (Math.abs(collision.target)!==2) throw new Error('unidade não desviou do bloqueio central das torretas para as sub-lanes 1 ou 5');
 if (state.matchTime < 22 || state.livingUnits === 0) throw new Error('primeira onda não entrou em combate');
 if (byId('simSpeedControls').hidden) throw new Error('controles de velocidade permaneceram ocultos');
 if (fullscreenRequests !== 0) throw new Error(`fullscreen foi solicitado automaticamente ${fullscreenRequests} vez(es)`);
+const mapSource=fs.readFileSync(path.join(root,'moba-square-v2.js'),'utf8');
+if (/\[-1\.5,-\.5,\.5,1\.5\].*strokeRoute/.test(mapSource)) throw new Error('divisórias visuais das sub-lanes ainda são desenhadas');
 
 console.log(JSON.stringify({ ...state, fullscreenRequests }, null, 2));

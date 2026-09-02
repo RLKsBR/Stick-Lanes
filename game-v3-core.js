@@ -32,6 +32,7 @@ let unitSeq=0,structureSeq=0,showTowerRanges=true,unitIndex={1:[[],[],[]],'-1':[
     waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
 const aiSpawnCd={1:{},'-1':{}},aiUse={1:{},'-1':{}},aiNextThink={1:0,'-1':0};
+const ORDER_OPTIONS=[['base','Base'],['behind','Atrás'],['ahead','Frente'],['advance','Avançar'],['attack','Atacar']];
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -108,12 +109,16 @@ $('#restart').onclick=()=>location.reload();
 
 function buildUI(){
  let lc=$('#laneControls');lc.innerHTML='';
+ let all=document.createElement('div');all.className='laneControl laneControlAll';
+ all.innerHTML=`<strong>Todas</strong><small class="muted">3 lanes</small><div class="laneBtns">${ORDER_OPTIONS.map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
+ all.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+   orders[1]=[b.dataset.v,b.dataset.v,b.dataset.v];syncOrderButtons(1)
+ });
+ lc.appendChild(all);
  ['Lane superior','Lane central','Lane inferior'].forEach((name,i)=>{
    let d=document.createElement('div');d.className='laneControl';
-   d.innerHTML=`<strong>${name}</strong><small class="muted">Ordem atual da lane</small><div class="laneBtns">${[
-     ['base','Base'],['behind','Atrás da torre'],['ahead','À frente da torre'],['advance','Avançar'],['attack','Atacar']
-   ].map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
-   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{orders[1][i]=b.dataset.v;d.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b))});
+   d.innerHTML=`<strong>${name}</strong><small class="muted">Ordem da lane</small><div class="laneBtns">${ORDER_OPTIONS.map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
+   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{orders[1][i]=b.dataset.v;syncOrderButtons(1)});
    lc.appendChild(d)
  });
  let sb=$('#spawnbar');sb.innerHTML='';
@@ -132,6 +137,16 @@ function buildUI(){
    })
  }
  lc.classList.toggle('aiControlled',assisted)
+}
+
+function syncOrderButtons(side=1){
+ if(side!==1)return;
+ const boxes=[...document.querySelectorAll('#laneControls .laneControl')];
+ boxes.slice(1).forEach((box,lane)=>box.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===orders[1][lane])));
+ if(boxes[0]){
+   const common=orders[1].every(v=>v===orders[1][0])?orders[1][0]:null;
+   boxes[0].querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===common))
+ }
 }
 
 function setCamera(v){cameraX=clamp(v,0,WORLD_W-VIEW_W)}
@@ -244,7 +259,7 @@ function updateAIOrders(side){
    let wave=units.some(u=>!u.dead&&u.minion&&u.side===side&&u.lane===lane);
    orders[side][lane]=wave&&own>=foe*.72?'advance':own>foe*1.45?'attack':foe>own*1.3?'behind':'advance'
  }
- if(side===1&&gameMode==='robot')document.querySelectorAll('.laneControl').forEach((box,lane)=>box.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===orders[1][lane])))
+ if(side===1&&gameMode==='robot')syncOrderButtons(1)
 }
 function runSideAI(side,t){
  if(t<aiNextThink[side])return;aiNextThink[side]=t+.7;

@@ -1,9 +1,9 @@
 /* Stick Lanes — torretas auxiliares v1
-   2 por intervalo entre torres principais; 20–30% do trecho permanece livre. */
+   Um par por intervalo; no mínimo 75% do corredor defensivo fica coberto. */
 'use strict';
 (function(){
 const TURRET_HP=900,TURRET_ATK=10,TURRET_RATE=1.15;
-const SIDE_MAIN_SHARE=.19,CENTER_MAIN_SHARE=.21,TURRET_SHARE=.095;
+const SIDE_MAIN_SHARE=.23,CENTER_MAIN_SHARE=.24,TURRET_SHARE=.15,MIN_GAP_COVERAGE=.75;
 const blue=new Image(),red=new Image();blue.src='assets/map/turret-blue.svg';red.src='assets/map/turret-red.svg';
 const oldMake=makeStructures,oldTowerDamage=towerDamageTaken,oldDraw=drawTower;
 
@@ -22,16 +22,16 @@ function addTurrets(){
  for(const side of [1,-1])for(let lane=0;lane<3;lane++){
    const line=mains.filter(s=>s.side===side&&s.lane===lane).sort((a,b)=>a.x-b.x);
    const gaps=[];for(let i=0;i<line.length-1;i++)gaps.push(arcLength(lane,line[i].x,line[i+1].x));
-   /* Torres principais passam a cobrir ~19% do trecho lateral e ~21% no centro. */
+   /* Alcance calculado sobre o comprimento real da rota, nunca sobre a tela. */
    line.forEach((s,i)=>{
      const adj=[];if(i>0)adj.push(gaps[i-1]);if(i<gaps.length)adj.push(gaps[i]);
      const share=lane===1?CENTER_MAIN_SHARE:SIDE_MAIN_SHARE;
-     if(adj.length)s.range=Math.max(8,Math.round(Math.min(...adj)*share/PX))
+     if(adj.length)s.range=Math.max(8,Math.ceil(Math.min(...adj)*share/PX))
    });
    for(let i=0;i<line.length-1;i++){
      const a=line[i],b=line[i+1],D=gaps[i],pairId=`${side}:${lane}:${i}`;
      [-.75,.75].forEach((subOffset,slot)=>{
-       const x=xAtArcFraction(lane,a.x,b.x,.5),range=Math.max(7,Math.round(D*TURRET_SHARE/PX));
+       const x=xAtArcFraction(lane,a.x,b.x,.5),range=Math.max(7,Math.ceil(D*TURRET_SHARE/PX));
        structures.push({id:++structureSeq,side,lane,x,kind:'tower',auxiliary:true,pairId,auxSlot:slot,subOffset,label:'Torreta',hp:TURRET_HP,maxHp:TURRET_HP,atk:TURRET_ATK,range,rate:TURRET_RATE,visualTier:0,blockedSubs:[-1,0,1],openSubs:[-2,2],collisionSpan:3,lastAttack:0,dead:false,fortified:false,breachUntil:-999,targetId:null})
      })
    }
@@ -63,5 +63,5 @@ drawTower=function(s,t){
 };
 
 if(structures.length&&!structures.some(s=>s.auxiliary))addTurrets();
-window.SL_TURRETS_V1={hp:TURRET_HP,atk:TURRET_ATK,rate:TURRET_RATE,sideFreeTarget:.24,centerFreeTarget:.20};
+window.SL_TURRETS_V1={hp:TURRET_HP,atk:TURRET_ATK,rate:TURRET_RATE,minGapCoverage:MIN_GAP_COVERAGE,mainShare:{side:SIDE_MAIN_SHARE,center:CENTER_MAIN_SHARE},turretShare:TURRET_SHARE};
 })();

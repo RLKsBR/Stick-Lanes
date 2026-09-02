@@ -19,14 +19,15 @@ O menu principal possui somente:
 ## Estado atual do jogo renderizado
 
 - Mundo horizontal de **22.500 unidades**.
-- **3 lanes**, cada uma com **3 sub-lanes**.
+- **3 lanes**, cada uma com **5 sub-lanes mecânicas**, sem linhas artificiais dividindo o piso.
 - **4 torres principais + 6 torretas auxiliares por lane** e base com **6.000 de vida**.
-- Alcance atual das torres, já na escala ampliada: avançada 30, central 30, traseira 32 e fortaleza 36.
-- As torretas possuem 900 de vida, alcance 4 e ficam distribuídas duas a duas entre as torres principais, preservando zonas livres no trajeto.
+- O alcance é recalculado pelo comprimento real de cada trecho. Torre + par de torretas + torre cobrem pelo menos **75%** de todo intervalo defensivo (77,5% nas laterais e 79,9% na mid no mapa atual).
+- As torretas possuem 900 de vida, ficam emparelhadas no mesmo progresso da rota e deixam somente as sub-lanes externas como passagem.
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
 - Economia: **+30 de ouro a cada 2 segundos**.
-- Ordens por lane: **Base**, **Atrás da torre**, **À frente da torre**, **Avançar** e **Atacar**.
+- Ordens por lane: **Base**, **Atrás**, **Frente**, **Avançar** e **Atacar**, com uma faixa **Todas** que aplica a mesma ordem às três lanes.
 - A IA usa ouro, cooldowns e unidades válidas como o jogador; não recebe bônus invisíveis.
+- A IA renderizada aprende durante as partidas: ajusta pesos das ordens, preferência de lane e desempenho das tropas; a memória fica separada por combinação de facções.
 
 **Avançar** acompanha a onda aliada, prefere limpar minions e ataca estruturas quando existe suporte. **Atacar** não exige minions, prefere tropas inimigas e não persegue um alvo para além da estrutura inimiga atual.
 
@@ -47,6 +48,8 @@ Minions só entregam ouro quando são abatidos por uma tropa comprável ou lenda
 `factions-v3.js` é a fonte de verdade para nome, passiva, três minions, tropas e funções de cada unidade. A Frontline v3 possui 26 facções; não renomeie nem invente tropas em código ou plano visual sem atualizar essa referência deliberadamente.
 
 Os planos visuais completos são mantidos fora do código e devem ser consultados antes de implementar uma facção. Já existem planos para Mentalistas, Alienígenas, Medievais, Robôs, Lobos, Zumbis, Samurais, Artrópodes, Elementais e Demônios.
+
+A implementação visual é atômica por facção: conferir `factions-v3.js` e o plano vigente, concluir minions + todas as tropas + locomoção + ataques + habilidades + LOD, salvar e testar a facção completa; somente então iniciar a próxima. Os cinco lotes atuais cobrem as 26 facções, mas continuam sendo arte procedural provisória.
 
 ## Laboratório estratégico
 

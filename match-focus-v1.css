@@ -81,7 +81,7 @@ html.sl-match-active #gameUI .laneControls{
   height:42px;
   box-sizing:border-box;
   display:grid!important;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(4,minmax(0,1fr));
   gap:4px;
   margin:0!important;
   padding:3px!important;
