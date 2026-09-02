@@ -7,10 +7,10 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Stick Lanes — Frontline v3</title>
-<link rel="stylesheet" href="style.css?v=20260902-menu-fix3">
-<link rel="stylesheet" href="visual-lote-01.css?v=20260902-bootfix1">
-<link rel="stylesheet" href="mobile-landscape-v1.css?v=20260902-menu-fix3">
-<link rel="stylesheet" href="match-focus-v1.css?v=20260902-observer-fix1">
+<link rel="stylesheet" href="style.css?v=20260902-runtime-fix1">
+<link rel="stylesheet" href="visual-lote-01.css?v=20260902-runtime-fix1">
+<link rel="stylesheet" href="mobile-landscape-v1.css?v=20260902-runtime-fix1">
+<link rel="stylesheet" href="match-focus-v1.css?v=20260902-runtime-fix1">
 </head>
 <body>
 <div id="app">
@@ -85,30 +85,32 @@
     </div>
   </section>
 </div>
-<script src="factions-v3.js?v=20260902-menu-fix3"></script>
-<script src="minion-speed-v1.js?v=20260902-menu-fix3"></script>
-<script src="balance-patch-v3-3.js?v=20260902-menu-fix3"></script>
-<script src="game-v3-core.js?v=20260902-menu-fix3"></script>
-<script src="game-v3-visuals.js?v=20260902-menu-fix3"></script>
-<script src="extras.js?v=20260902-menu-fix3"></script>
-<script src="map-sci-fi-v4.js?v=20260902-menu-fix3"></script>
-<script src="map-assets-v4.js?v=20260902-menu-fix3"></script>
-<script src="map-2_5d-v5.js?v=20260902-menu-fix3"></script>
-<script src="map-layout-v5.js?v=20260902-menu-fix3"></script>
-<script src="movement-v6.js?v=20260902-menu-fix3"></script>
-<script src="minion-wave-v2.js?v=20260902-menu-fix3"></script>
-<script src="turret-defense-v1.js?v=20260902-menu-fix3"></script>
-<script src="visual-lote-01.js?v=20260902-menu-fix3"></script>
-<script src="visual-lote-02.js?v=20260902-menu-fix3"></script>
-<script src="visual-lote-03.js?v=20260902-menu-fix3"></script>
-<script src="visual-lote-04.js?v=20260902-menu-fix3"></script>
-<script src="visual-lote-05.js?v=20260902-menu-fix3"></script>
-<script src="visual-team-structures.js?v=20260902-menu-fix3"></script>
-<script src="visual-team-range.js?v=20260902-menu-fix3"></script>
-<script src="frontline-moba-v1.js?v=20260902-menu-fix3"></script>
-<script src="moba-square-v2.js?v=20260902-menu-fix3"></script>
-<script src="mobile-landscape-v1.js?v=20260902-menu-fix3"></script>
-<script src="match-focus-v1.js?v=20260902-observer-fix1"></script>
+<script src="factions-v3.js?v=20260902-runtime-fix1"></script>
+<script src="minion-speed-v1.js?v=20260902-runtime-fix1"></script>
+<script src="balance-patch-v3-3.js?v=20260902-runtime-fix1"></script>
+<script src="game-v3-core.js?v=20260902-runtime-fix1"></script>
+<script src="game-v3-visuals.js?v=20260902-runtime-fix1"></script>
+<script src="extras.js?v=20260902-runtime-fix1"></script>
+
+<!-- Mecânica única do mapa atual. Os sistemas legados map-sci-fi/map-2_5d não são carregados
+     porque instalavam uma segunda câmera, uma segunda pilha de gestures e overrides concorrentes. -->
+<script src="map-layout-v5.js?v=20260902-runtime-fix1"></script>
+<script src="movement-v6.js?v=20260902-runtime-fix1"></script>
+<script src="minion-wave-v2.js?v=20260902-runtime-fix1"></script>
+<script src="turret-defense-v1.js?v=20260902-runtime-fix1"></script>
+
+<script src="visual-lote-01.js?v=20260902-runtime-fix1"></script>
+<script src="visual-lote-02.js?v=20260902-runtime-fix1"></script>
+<script src="visual-lote-03.js?v=20260902-runtime-fix1"></script>
+<script src="visual-lote-04.js?v=20260902-runtime-fix1"></script>
+<script src="visual-lote-05.js?v=20260902-runtime-fix1"></script>
+<script src="visual-team-structures.js?v=20260902-runtime-fix1"></script>
+<script src="visual-team-range.js?v=20260902-runtime-fix1"></script>
+<script src="frontline-moba-v1.js?v=20260902-runtime-fix1"></script>
+<script src="moba-square-v2.js?v=20260902-runtime-fix1"></script>
+<script src="mobile-performance-v1.js?v=20260902-runtime-fix1"></script>
+<script src="mobile-landscape-v1.js?v=20260902-runtime-fix1"></script>
+<script src="match-focus-v1.js?v=20260902-runtime-fix1"></script>
 <script>
 (() => {
   const status=document.querySelector('#bootStatus');
