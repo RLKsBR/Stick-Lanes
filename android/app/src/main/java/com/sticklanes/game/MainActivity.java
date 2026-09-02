@@ -25,14 +25,16 @@ public class MainActivity extends Activity {
     private static final String NATIVE_FULLSCREEN_HOOK =
             "(function(){" +
             "function sync(){" +
-            "var b=document.getElementById('fullscreenToggle');if(!b)return;" +
+            "var b=document.getElementById('fullscreenToggle');if(!b)return false;" +
             "var on=false;try{on=!!AndroidGame.isFullscreen();}catch(e){}" +
-            "b.disabled=false;b.textContent=on?'⛶ Sair da tela cheia':'⛶ Tela cheia';" +
+            "b.disabled=false;" +
+            "var text=on?'⛶ Sair da tela cheia':'⛶ Tela cheia';if(b.textContent!==text)b.textContent=text;" +
             "b.setAttribute('aria-pressed',on?'true':'false');" +
             "b.title='Tela cheia opcional — a orientação do aparelho não será forçada.';" +
+            "return true;" +
             "}" +
             "function bind(){" +
-            "var b=document.getElementById('fullscreenToggle');if(!b)return;" +
+            "var b=document.getElementById('fullscreenToggle');if(!b)return false;" +
             "if(b.dataset.nativeBound!=='1'){" +
             "b.dataset.nativeBound='1';" +
             "b.addEventListener('click',function(e){" +
@@ -41,13 +43,12 @@ public class MainActivity extends Activity {
             "setTimeout(sync,100);" +
             "},true);" +
             "}" +
-            "sync();" +
+            "sync();return true;" +
             "}" +
             "window.__slSyncNativeFullscreen=sync;" +
-            "new MutationObserver(bind).observe(document.documentElement,{childList:true,subtree:true});" +
+            "bind();setTimeout(bind,100);setTimeout(bind,350);setTimeout(bind,900);" +
             "window.addEventListener('resize',function(){setTimeout(sync,50);},{passive:true});" +
             "window.addEventListener('orientationchange',function(){setTimeout(sync,100);},{passive:true});" +
-            "bind();" +
             "})();";
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -104,6 +105,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
 
         if (savedInstanceState == null) {
+            webView.clearCache(true);
             webView.loadUrl(GAME_URL);
         } else {
             webView.restoreState(savedInstanceState);
