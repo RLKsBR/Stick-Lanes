@@ -115,8 +115,12 @@ for (const id of ['menuPlay', 'menuRobots']) {
 }
 
 const mobileSource = fs.readFileSync(path.join(root, 'mobile-landscape-v1.js'), 'utf8');
-if (/orientation\s*\.\s*lock\s*\(/.test(mobileSource)) throw new Error('mobile ainda força orientation.lock');
+if (!/orientation\?\.lock\?\.\('landscape'\)/.test(mobileSource)) throw new Error('botão fullscreen não solicita orientação horizontal');
 if (/launchBattle\s*=/.test(mobileSource)) throw new Error('mobile ainda intercepta launchBattle');
+const mobileCss = fs.readFileSync(path.join(root, 'mobile-landscape-v1.css'), 'utf8');
+if (!/#fullscreenToggle[\s\S]*width:34px!important/.test(mobileCss)) throw new Error('botão fullscreen não foi compactado');
+const androidSource = fs.readFileSync(path.join(root, 'android/app/src/main/java/com/sticklanes/game/MainActivity.java'), 'utf8');
+if (!/SCREEN_ORIENTATION_SENSOR_LANDSCAPE/.test(androidSource)) throw new Error('APK não solicita orientação horizontal no fullscreen');
 
 const elements = new Map();
 const byId = id => {
@@ -254,14 +258,33 @@ const state = vm.runInContext(`({
   structures: structures.length,
   livingUnits: units.filter(unit=>!unit.dead).length,
   timeScale,
-  matchTime
+  matchTime,
+  mapMeta:SL_MOBA_SQUARE_V2,
+  unitSubs:[...new Set(units.filter(unit=>unit.minion).map(unit=>Math.round(unit.sub)))].sort((a,b)=>a-b),
+  mainProgress:[0,1,2].map(lane=>structures.filter(s=>s.side===1&&s.lane===lane&&!s.auxiliary).map(s=>s.ownProgress)),
+  uniqueStructureIds:new Set(structures.map(s=>s.id)).size,
+  turretPairs:[...new Set(structures.filter(s=>s.auxiliary).map(s=>s.pairId))].map(id=>structures.filter(s=>s.pairId===id).map(s=>({x:s.x,sub:s.subOffset})))
 })`, context);
+
+const collision = vm.runInContext(`(()=>{
+  const pair=structures.find(s=>s.auxiliary),direction=pair.side===1?1:-1;
+  const probe={id:2,lane:pair.lane,sub:0,subTarget:0,x:pair.x-direction*180,speed:5,slowUntil:0,runTime:0,fac:'Teste'};
+  move(probe,pair.x+direction*500,.1);return{target:probe.subTarget,sub:probe.sub}
+})()`, context);
 
 if (!byId('mainMenu').hidden) throw new Error('menu principal permaneceu visível');
 if (byId('gameUI').hidden) throw new Error('interface da batalha permaneceu oculta');
 if (state.gameMode !== 'robot' || !state.running) throw new Error('simulação assistida não iniciou');
 if (state.loadoutSize !== 8 || state.enemyLoadoutSize !== 8) throw new Error('IA não montou os dois baralhos');
 if (state.structures !== 60) throw new Error(`estruturas inválidas: ${state.structures}`);
+if (state.uniqueStructureIds !== state.structures) throw new Error('estruturas sem IDs únicos');
+if (state.mapMeta.mapWidth !== 6800 || state.mapMeta.mapHeight !== 6800 || state.mapMeta.subLaneGap !== 72) throw new Error('mapa expandido não foi aplicado');
+if (Math.abs(state.mapMeta.routeLengths[0] - state.mapMeta.routeLengths[2]) > 1) throw new Error('top e bot não têm o mesmo comprimento');
+if (!(state.mapMeta.routeLengths[1] < state.mapMeta.routeLengths[0])) throw new Error('mid deveria ser a rota mais curta');
+if (state.mainProgress.some(row=>JSON.stringify(row)!==JSON.stringify([.1,.2,.3,.4]))) throw new Error('torres principais não usam posições percentuais comuns');
+if (!state.turretPairs.every(pair=>pair.length===2&&pair[0].x===pair[1].x&&Math.abs(pair[0].sub)===.75&&Math.abs(pair[1].sub)===.75)) throw new Error('torretas não estão emparelhadas lateralmente');
+if (!state.unitSubs.includes(-2) || !state.unitSubs.includes(2)) throw new Error('formação não ocupa as cinco sub-lanes');
+if (Math.abs(collision.target)!==2) throw new Error('unidade não desviou do bloqueio central das torretas para as sub-lanes 1 ou 5');
 if (state.matchTime < 22 || state.livingUnits === 0) throw new Error('primeira onda não entrou em combate');
 if (byId('simSpeedControls').hidden) throw new Error('controles de velocidade permaneceram ocultos');
 if (fullscreenRequests !== 0) throw new Error(`fullscreen foi solicitado automaticamente ${fullscreenRequests} vez(es)`);

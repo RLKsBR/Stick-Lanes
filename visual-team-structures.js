@@ -50,11 +50,11 @@ function neutralTowerBody(s,t,aux){
 
 drawTower=function(s,t){
   if(s.auxiliary)return drawAuxTurret(s,t);if(s.dead)return;
-  const x=s.x,y=laneYAt(s.lane,s.x),tier=s.visualTier||1;drawTowerRange(s);ctx.save();ctx.translate(x,y);ctx.scale(.88+tier*.08,.88+tier*.08);neutralTowerBody(s,t,false);
+  const x=s.x,y=structureY(s),tier=s.visualTier||1;drawTowerRange(s);ctx.save();ctx.translate(x,y);ctx.scale(.88+tier*.08,.88+tier*.08);neutralTowerBody(s,t,false);
   ctx.fillStyle='rgba(10,12,11,.82)';rr2(-58,54,116,21,6);ctx.fill();ctx.fillStyle='#ece8dc';ctx.font='700 10px system-ui';ctx.textAlign='center';ctx.fillText(s.label+' • '+s.range+'u',0,68);ctx.restore();
 };
 
 drawAuxTurret=function(s,t){
-  if(s.dead)return;const x=s.x,y=laneYAt(s.lane,s.x);drawTowerRange(s);ctx.save();ctx.translate(x,y);neutralTowerBody(s,t,true);ctx.fillStyle='rgba(10,12,11,.82)';rr2(-39,45,78,18,5);ctx.fill();ctx.fillStyle='#ece8dc';ctx.font='700 9px system-ui';ctx.textAlign='center';ctx.fillText('TORRETA • '+s.range+'u',0,57);ctx.restore();
+  if(s.dead)return;const x=s.x,y=structureY(s);drawTowerRange(s);ctx.save();ctx.translate(x,y);neutralTowerBody(s,t,true);ctx.fillStyle='rgba(10,12,11,.82)';rr2(-39,45,78,18,5);ctx.fill();ctx.fillStyle='#ece8dc';ctx.font='700 9px system-ui';ctx.textAlign='center';ctx.fillText('TORRETA • '+s.range+'u',0,57);ctx.restore();
 };
 })();

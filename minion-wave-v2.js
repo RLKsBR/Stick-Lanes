@@ -6,9 +6,9 @@ const FORMATION=[
   {type:'tank',sub:0,offset:185},
   {type:'fighter',sub:-1,offset:95},
   {type:'fighter',sub:1,offset:75},
-  {type:'ranged',sub:-1,offset:-35},
+  {type:'ranged',sub:-2,offset:-35},
   {type:'ranged',sub:0,offset:-65},
-  {type:'ranged',sub:1,offset:-95}
+  {type:'ranged',sub:2,offset:-95}
 ];
 
 spawnWave=function(side){
@@ -27,5 +27,5 @@ spawnWave=function(side){
   }
 };
 
-window.SL_MINION_WAVE_V2={formation:FORMATION,totalPerLane:6,totalPerSide:18};
+window.SL_MINION_WAVE_V2={formation:FORMATION,subLanes:5,totalPerLane:6,totalPerSide:18};
 })();

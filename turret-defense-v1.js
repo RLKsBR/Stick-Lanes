@@ -30,9 +30,9 @@ function addTurrets(){
    });
    for(let i=0;i<line.length-1;i++){
      const a=line[i],b=line[i+1],D=gaps[i],pairId=`${side}:${lane}:${i}`;
-     [0.35,0.65].forEach((f,slot)=>{
-       const x=xAtArcFraction(lane,a.x,b.x,f),range=Math.max(7,Math.round(D*TURRET_SHARE/PX));
-       structures.push({side,lane,x,kind:'tower',auxiliary:true,pairId,auxSlot:slot,label:'Torreta',hp:TURRET_HP,maxHp:TURRET_HP,atk:TURRET_ATK,range,rate:TURRET_RATE,visualTier:0,lastAttack:0,dead:false,fortified:false,breachUntil:-999,targetId:null})
+     [-.75,.75].forEach((subOffset,slot)=>{
+       const x=xAtArcFraction(lane,a.x,b.x,.5),range=Math.max(7,Math.round(D*TURRET_SHARE/PX));
+       structures.push({id:++structureSeq,side,lane,x,kind:'tower',auxiliary:true,pairId,auxSlot:slot,subOffset,label:'Torreta',hp:TURRET_HP,maxHp:TURRET_HP,atk:TURRET_ATK,range,rate:TURRET_RATE,visualTier:0,blockedSubs:[-1,0,1],openSubs:[-2,2],collisionSpan:3,lastAttack:0,dead:false,fortified:false,breachUntil:-999,targetId:null})
      })
    }
  }
@@ -40,10 +40,10 @@ function addTurrets(){
 makeStructures=function(){oldMake();addTurrets()};
 towerDamageTaken=function(s,t){if(s.auxiliary){s.fortified=false;return 1}return oldTowerDamage(s,t)};
 
-function valid(s,u){let sy=laneYAt(s.lane,s.x),r=s.range*PX;return u&&!u.dead&&u.side===-s.side&&u.lane===s.lane&&Math.hypot(u.x-s.x,yOf(u)-sy)<=r}
-function choose(s,used){let sy=laneYAt(s.lane,s.x),r=s.range*PX;return nearbyUnits(-s.side,s.lane,s.x,r).filter(u=>valid(s,u)&&!used.has(u.id)).sort((a,b)=>{if(a.minion!==b.minion)return a.minion?-1:1;return Math.hypot(a.x-s.x,yOf(a)-sy)-Math.hypot(b.x-s.x,yOf(b)-sy)})[0]||null}
-function fire(s,v,t){let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);s.lastAttack=t;effects.push({type:'shot',x1:s.x,y1:laneYAt(s.lane,s.x)-28,x2:v.x,y2:yOf(v)-10,t,side:s.side})}
-function mainFire(s,t){towerDamageTaken(s,t);if(t-s.lastAttack<s.rate)return;let sy=laneYAt(s.lane,s.x),v=null,best=s.range*PX;for(const u of nearbyUnits(-s.side,s.lane,s.x,best)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}if(v)fire(s,v,t)}
+function valid(s,u){let sy=structureY(s),r=s.range*PX;return u&&!u.dead&&u.side===-s.side&&u.lane===s.lane&&Math.hypot(u.x-s.x,yOf(u)-sy)<=r}
+function choose(s,used){let sy=structureY(s),r=s.range*PX;return nearbyUnits(-s.side,s.lane,s.x,r).filter(u=>valid(s,u)&&!used.has(u.id)).sort((a,b)=>{if(a.minion!==b.minion)return a.minion?-1:1;return Math.hypot(a.x-s.x,yOf(a)-sy)-Math.hypot(b.x-s.x,yOf(b)-sy)})[0]||null}
+function fire(s,v,t){let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);s.lastAttack=t;effects.push({type:'shot',x1:s.x,y1:structureY(s)-28,x2:v.x,y2:yOf(v)-10,t,side:s.side})}
+function mainFire(s,t){towerDamageTaken(s,t);if(t-s.lastAttack<s.rate)return;let sy=structureY(s),v=null,best=s.range*PX;for(const u of nearbyUnits(-s.side,s.lane,s.x,best)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}if(v)fire(s,v,t)}
 updateTowers=function(t){
  for(const s of structures)if(!s.dead&&!s.auxiliary)mainFire(s,t);
  const groups=new Map();for(const s of structures)if(!s.dead&&s.auxiliary){if(!groups.has(s.pairId))groups.set(s.pairId,[]);groups.get(s.pairId).push(s)}
@@ -57,7 +57,7 @@ function ready(im){return im.complete&&im.naturalWidth>0}
 function tangent(lane,x){let d=55;return Math.atan2(laneYAt(lane,x+d)-laneYAt(lane,x-d),d*2)}
 drawTower=function(s,t){
  if(!s.auxiliary)return oldDraw(s,t);if(s.dead)return;if(typeof drawTowerRange==='function')drawTowerRange(s);
- let x=s.x,y=laneYAt(s.lane,s.x),im=s.side===1?blue:red;ctx.save();ctx.translate(x,y);ctx.rotate(tangent(s.lane,x));ctx.scale(s.side,1);
+ let x=s.x,y=structureY(s),im=s.side===1?blue:red;ctx.save();ctx.translate(x,y);ctx.rotate(tangent(s.lane,x));ctx.scale(s.side,1);
  if(ready(im))ctx.drawImage(im,-72,-92,144,120);else{ctx.fillStyle=s.side===1?'#2d9fd0':'#c44551';ctx.beginPath();ctx.arc(0,-18,28,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111820';ctx.fillRect(0,-25,60,12)}ctx.restore();
  let hp=Math.max(0,s.hp/s.maxHp),w=80;ctx.fillStyle='rgba(3,6,9,.9)';ctx.fillRect(x-w/2,y-101,w,7);ctx.fillStyle=hp>.4?'#47bd70':'#df5962';ctx.fillRect(x-w/2,y-101,w*hp,5)
 };

@@ -1,5 +1,5 @@
 /* Stick Lanes — motor Frontline v3
-   22.500 de largura, 3 lanes x 3 sub-lanes, 4 torres por lane,
+   22.500 de largura lógica, 3 lanes x 5 sub-lanes, 4 torres por lane,
    ondas automáticas de minions por facção e partidas longas. */
 'use strict';
 
@@ -22,7 +22,7 @@ const towerTypes=[
 ];
 const AUX_TURRET={label:'Torreta',hp:900,atk:10,range:4,rate:1.15,visualTier:0,auxiliary:true};
 const BASE_HP=6000,WAVE_INTERVAL=22;
-const MINION_WAVE_FORMATION=[['tank',-1],['fighter',0],['fighter',0],['ranged',1],['ranged',1],['ranged',1]];
+const MINION_WAVE_FORMATION=[['tank',0],['fighter',-1],['fighter',1],['ranged',-2],['ranged',0],['ranged',2]];
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
@@ -54,6 +54,7 @@ function subFactorForSide(side,x){
 }
 function pathY(lane,sub,x,originSide=1){return laneYAt(lane,x)+(sub||0)*SUB_GAP*subFactorForSide(originSide,x)}
 function yOf(u){return pathY(u.lane,u.sub||0,u.x,u.origSide||u.side)}
+function structureY(s){return laneYAt(s.lane,s.x)+(s.subOffset||0)*SUB_GAP}
 function dist(a,b){return Math.hypot(a.x-b.x,yOf(a)-yOf(b))}
 function timeText(s){let m=Math.floor(s/60),ss=Math.floor(s%60);return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`}
 
@@ -183,7 +184,11 @@ function makeStructures(){
 function aliveTowers(side,lane){return structures.filter(s=>!s.dead&&s.side===side&&s.lane===lane)}
 function baseHp(side){return side===1?playerBase:enemyBase}
 function damageBase(side,d){if(side===1)playerBase=Math.max(0,playerBase-d);else enemyBase=Math.max(0,enemyBase-d)}
-function roleSub(role){return role==='tank'?-1:(role==='ranged'||role==='support'||role==='controller'||role==='siege'?1:0)}
+function roleSub(role){
+ if(role==='assassin')return-2;if(role==='tank')return-1;
+ if(role==='ranged'||role==='support'||role==='controller'||role==='siege')return 1;
+ if(role==='skirmisher')return 2;return 0
+}
 
 function applySpawnPassive(obj){
  if(obj.fac==='Titãs'){obj.maxHp*=1.2;obj.hp*=1.2;obj.speed*=.9}
@@ -195,7 +200,8 @@ function applySpawnPassive(obj){
 }
 function spawnUnit(side,lane,fac,u,opts={}){
  let born=simTime;
- let obj={id:++unitSeq,side,lane,sub:opts.sub??roleSub(u.role),fac,name:u.name,role:u.role,cost:opts.minion?0:(u.cost||0),
+ let initialSub=opts.sub??roleSub(u.role);
+ let obj={id:++unitSeq,side,lane,sub:initialSub,subTarget:initialSub,fac,name:u.name,role:u.role,cost:opts.minion?0:(u.cost||0),
    x:side===1?BASE_X[1]+95:BASE_X[-1]-95,hp:u.hp,maxHp:u.hp,def:u.def,atk:u.atk,speed:u.speed,range:u.range,rate:u.rate,
    special:{...(u.special||{})},ability:u.ability,minion:!!opts.minion,minionType:opts.minionType||null,lastAttack:0,lastSkill:-999,lastDamaged:-999,
    stunUntil:0,slowUntil:0,dead:false,rewarded:false,chargeReady:true,revived:false,born,anim:Math.random()*10,
@@ -367,7 +373,7 @@ function escortX(u){
  return front.x-u.side*gap
 }
 function structureSupported(u,s){
- let sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),radius=COMBAT.siege.breachRadius*PX;
+ let sy=s.kind==='base'?BASE_Y:structureY(s),radius=COMBAT.siege.breachRadius*PX;
  return nearbyUnits(u.side,u.lane,s.x,radius).some(v=>!v.dead&&v.minion&&Math.hypot(v.x-s.x,yOf(v)-sy)<=radius)
 }
 function alliesNear(u,r=300){return nearbyUnits(u.side,u.lane,u.x,r).filter(v=>!v.dead&&v!==u&&dist(u,v)<r).length}
@@ -395,7 +401,7 @@ function update(dt,t){
    if(u.dead)continue;passiveTick(u,dt,t);if(u.hp<=0){killUnit(u,null,t);continue}
    if(t<u.stunUntil)continue;
    support(u,t);
-   let order=u.minion?'advance':orders[u.side][u.lane],s=nextStructure(u),sy=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x),
+   let order=u.minion?'advance':orders[u.side][u.lane],s=nextStructure(u),sy=s.kind==='base'?BASE_Y:structureY(s),
        sr=Math.hypot(s.x-u.x,sy-yOf(u))<=u.range*PX,foe=orderedEnemy(u,u.range,order,s),
        chase=order==='attack'?orderedEnemy(u,15,order,s):null;
    if(u.role==='siege'&&sr){
@@ -417,7 +423,7 @@ function update(dt,t){
 function structurePacing(){return matchTime<480?.68:matchTime<720?.84:1}
 function siegeMinionNear(s){
  if(s.kind!=='tower')return false;
- let radius=COMBAT.siege.breachRadius*PX,sy=laneYAt(s.lane,s.x);
+ let radius=COMBAT.siege.breachRadius*PX,sy=structureY(s);
  return nearbyUnits(-s.side,s.lane,s.x,radius).some(u=>!u.dead&&u.minion&&Math.hypot(u.x-s.x,yOf(u)-sy)<=radius)
 }
 function towerDamageTaken(s,t){
@@ -431,7 +437,7 @@ function attackStructure(a,s,t){
  if(a.minion)d*=COMBAT.siege.minionStructureDamage;
  if(s.kind==='base')damageBase(s.side,d);
  else{d*=towerDamageTaken(s,t);s.hp-=d;if(s.hp<=0){s.hp=0;s.dead=true}}
- let y=s.kind==='base'?BASE_Y:laneYAt(s.lane,s.x);effects.push({type:'impact',x:s.x,y,t,color:attackColor(a)});
+ let y=s.kind==='base'?BASE_Y:structureY(s);effects.push({type:'impact',x:s.x,y,t,color:attackColor(a)});
  if(a.range>4)effects.push({type:'beam',x1:a.x,y1:yOf(a)-18,x2:s.x,y2:y-30,t,color:attackColor(a)})
 }
 function nearFriendlyTower(u,r=8*PX){
@@ -508,7 +514,7 @@ function updateTowers(t){
    if(s.dead)continue;
    towerDamageTaken(s,t);
    if(t-s.lastAttack<s.rate)continue;
-   let sy=laneYAt(s.lane,s.x),v=null,best=s.range*PX;
+   let sy=structureY(s),v=null,best=s.range*PX;
    for(const u of nearbyUnits(-s.side,s.lane,s.x,best)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}
    if(!v)continue;let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;
    if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);

@@ -3,6 +3,7 @@ package com.sticklanes.game;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -28,9 +29,10 @@ public class MainActivity extends Activity {
             "var b=document.getElementById('fullscreenToggle');if(!b)return false;" +
             "var on=false;try{on=!!AndroidGame.isFullscreen();}catch(e){}" +
             "b.disabled=false;" +
-            "var text=on?'⛶ Sair da tela cheia':'⛶ Tela cheia';if(b.textContent!==text)b.textContent=text;" +
+            "var text=on?'×':'⛶';if(b.textContent!==text)b.textContent=text;" +
+            "b.setAttribute('aria-label',on?'Sair da tela cheia':'Entrar em tela cheia horizontal');" +
             "b.setAttribute('aria-pressed',on?'true':'false');" +
-            "b.title='Tela cheia opcional — a orientação do aparelho não será forçada.';" +
+            "b.title=on?'Sair da tela cheia':'Tela cheia horizontal';" +
             "return true;" +
             "}" +
             "function bind(){" +
@@ -129,6 +131,9 @@ public class MainActivity extends Activity {
 
     private void setFullscreen(boolean enabled) {
         fullscreen = enabled;
+        setRequestedOrientation(enabled
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             getWindow().setDecorFitsSystemWindows(!enabled);

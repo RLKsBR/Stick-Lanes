@@ -34,7 +34,9 @@ html.sl-match-active #gameUI>.hud #restart{
   display:none!important;
 }
 html.sl-match-active #gameUI>.hud .hudActions{
-  display:block!important;
+  display:flex!important;
+  align-items:center;
+  gap:4px;
   padding:0!important;
   margin:0!important;
 }
@@ -90,7 +92,7 @@ html.sl-match-active #gameUI .laneControls{
   box-shadow:0 3px 14px rgba(0,0,0,.28);
 }
 html.sl-match-active #gameUI:has(#simSpeedControls:not([hidden])) .laneControls{
-  right:242px;
+  right:282px;
 }
 html.sl-match-active #gameUI .laneControl{
   min-width:0;
@@ -195,7 +197,7 @@ html.sl-match-active #gameUI .spawn small{font-size:7px!important}
 html.sl-match-active #gameUI:before{display:none!important}
 
 @media (max-width:900px) and (orientation:landscape){
-  html.sl-match-active #gameUI:has(#simSpeedControls:not([hidden])) .laneControls{right:205px}
+  html.sl-match-active #gameUI:has(#simSpeedControls:not([hidden])) .laneControls{right:226px}
   html.sl-match-active #gameUI #simSpeedControls:not([hidden]){height:32px;padding:2px 3px}
   html.sl-match-active #gameUI #simSpeedControls .muted{display:none}
   html.sl-match-active #gameUI #simSpeedControls button{min-width:34px;padding:1px 4px;font-size:9px}

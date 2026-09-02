@@ -167,8 +167,8 @@ function structureAccent(s){
   if(team.shape==='sharp'){poly([[-22,-72],[0,-84],[22,-72],[0,-62]],team.dark,team.primary,3)}
   else{ctx.beginPath();ctx.arc(0,-73,11,0,Math.PI*2);ctx.fill();ctx.stroke()}
 }
-drawTower=function(s,t){oldDrawTower(s,t);if(s.dead)return;const x=s.x,y=laneYAt(s.lane,s.x);ctx.save();ctx.translate(x,y);structureAccent(s);ctx.restore()};
-drawAuxTurret=function(s,t){oldDrawAuxTurret(s,t);if(s.dead)return;const x=s.x,y=laneYAt(s.lane,s.x);ctx.save();ctx.translate(x,y+3);ctx.scale(.72,.72);structureAccent(s);ctx.restore()};
+drawTower=function(s,t){oldDrawTower(s,t);if(s.dead)return;const x=s.x,y=structureY(s);ctx.save();ctx.translate(x,y);structureAccent(s);ctx.restore()};
+drawAuxTurret=function(s,t){oldDrawAuxTurret(s,t);if(s.dead)return;const x=s.x,y=structureY(s);ctx.save();ctx.translate(x,y+3);ctx.scale(.72,.72);structureAccent(s);ctx.restore()};
 
 /* Minimapa quadrado: visão estratégica e identificação por forma+cor. */
 drawMiniMap=function(){
@@ -180,7 +180,7 @@ drawMiniMap=function(){
     ctx.strokeStyle=lane===selectedLane?'#b9aa7d':'#756d55';ctx.lineWidth=lane===selectedLane?7:5;ctx.lineCap='round';ctx.beginPath();
     for(let x=BASE_X[1];x<=BASE_X[-1];x+=450){let mx=x0+(x/WORLD_W)*size,my=y0+(laneYAt(lane,x)/VIEW_H)*size;if(x===BASE_X[1])ctx.moveTo(mx,my);else ctx.lineTo(mx,my)}ctx.stroke();
   }
-  structures.forEach(s=>{if(s.dead)return;let team=teamTheme(s.side),mx=x0+(s.x/WORLD_W)*size,my=y0+(laneYAt(s.lane,s.x)/VIEW_H)*size;ctx.fillStyle=team.primary;if(team.shape==='sharp')poly([[mx,my-3],[mx+3,my],[mx,my+3],[mx-3,my]],team.primary);else{ctx.beginPath();ctx.arc(mx,my,3,0,Math.PI*2);ctx.fill()}});
+  structures.forEach(s=>{if(s.dead)return;let team=teamTheme(s.side),mx=x0+(s.x/WORLD_W)*size,my=y0+(structureY(s)/VIEW_H)*size;ctx.fillStyle=team.primary;if(team.shape==='sharp')poly([[mx,my-3],[mx+3,my],[mx,my+3],[mx-3,my]],team.primary);else{ctx.beginPath();ctx.arc(mx,my,3,0,Math.PI*2);ctx.fill()}});
   units.filter(u=>!u.dead).forEach(u=>{let team=teamTheme(u.side),mx=x0+(u.x/WORLD_W)*size,my=y0+(yOf(u)/VIEW_H)*size;ctx.fillStyle=team.primary;if(team.shape==='sharp'){ctx.fillRect(mx-2,my-2,4,4)}else{ctx.beginPath();ctx.arc(mx,my,2,0,Math.PI*2);ctx.fill()}});
   const t1=teamTheme(1),t2=teamTheme(-1);ctx.fillStyle=t1.primary;ctx.beginPath();ctx.arc(x0+5,y0+size/2,7,0,Math.PI*2);ctx.fill();poly([[x0+size-5,y0+size/2-7],[x0+size+2,y0+size/2],[x0+size-5,y0+size/2+7],[x0+size-12,y0+size/2]],t2.primary);
   ctx.restore();ctx.fillStyle='#e9e2d3';ctx.font='700 11px system-ui';ctx.textAlign='left';ctx.fillText('MAPA TÁTICO',x0,y0+size+4);ctx.restore();
