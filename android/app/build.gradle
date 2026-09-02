@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.sticklanes.game'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.sticklanes.game'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0-test'
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+/*
+ * O jogo web continua sendo a fonte principal. Antes de cada build do APK,
+ * copiamos somente os arquivos necessários do jogo para android_asset.
+ */
+def webRoot = rootProject.projectDir.parentFile
+
+tasks.register('syncWebAssets', Copy) {
+    from(webRoot) {
+        include '*.html'
+        include '*.js'
+        include '*.css'
+        include 'assets/**'
+        exclude 'android/**'
+        exclude '.github/**'
+        exclude 'tests/**'
+    }
+    into("$projectDir/src/main/assets")
+}
+
+preBuild.dependsOn(tasks.named('syncWebAssets'))
