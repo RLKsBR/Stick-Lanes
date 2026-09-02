@@ -1,29 +1,79 @@
-/* Stick Lanes — modo mobile landscape/fullscreen */
+/* Stick Lanes — layout mobile + tela cheia opcional */
 (function(){
 'use strict';
-let notice;
-function ensureNotice(){
-  if(notice)return notice;
-  notice=document.createElement('div');notice.id='rotateNotice';notice.innerHTML='<b>Gire o celular</b><span>Stick Lanes é jogado na horizontal.</span>';
-  document.body.appendChild(notice);return notice;
+
+const root=document.documentElement;
+const gameSection=()=>document.getElementById('gameUI');
+let fullscreenButton=null;
+
+function isMatchActive(){
+  const ui=gameSection();
+  return !!ui&&!ui.hidden;
 }
-function syncOrientation(){
-  const active=gameUI&&!gameUI.hidden,portrait=innerHeight>innerWidth;
-  document.documentElement.classList.toggle('sl-match-active',active);
-  document.documentElement.classList.toggle('sl-portrait-match',active&&portrait);
-  if(active){ensureNotice();notice.hidden=!portrait;requestAnimationFrame(()=>{window.scrollTo(0,0)})}
+
+function ensureFullscreenButton(){
+  if(fullscreenButton&&fullscreenButton.isConnected)return fullscreenButton;
+  const actions=document.querySelector('#gameUI .hudActions');
+  if(!actions)return null;
+  const button=document.createElement('button');
+  button.id='fullscreenToggle';
+  button.className='secondary fullscreenToggle';
+  button.type='button';
+  button.setAttribute('aria-label','Alternar tela cheia');
+  button.addEventListener('click',toggleFullscreen);
+  actions.appendChild(button);
+  fullscreenButton=button;
+  return button;
 }
-function requestLandscape(){
-  const el=document.documentElement;
-  try{if(!document.fullscreenElement&&el.requestFullscreen)el.requestFullscreen({navigationUI:'hide'}).catch(()=>{})}catch(_){ }
-  const lock=()=>{try{screen.orientation?.lock?.('landscape').catch(()=>{})}catch(_){ }};
-  if(document.fullscreenElement)lock();else document.addEventListener('fullscreenchange',lock,{once:true});
-  setTimeout(syncOrientation,60);
+
+function syncLayout(){
+  const active=isMatchActive();
+  root.classList.toggle('sl-match-active',active);
+  root.classList.toggle('sl-native-fullscreen',!!document.fullscreenElement);
+
+  const button=ensureFullscreenButton();
+  if(button){
+    const fullscreen=!!document.fullscreenElement;
+    button.hidden=!active;
+    button.textContent=fullscreen?'⛶ Sair da tela cheia':'⛶ Tela cheia';
+    button.setAttribute('aria-pressed',fullscreen?'true':'false');
+    const supported=!!(document.documentElement.requestFullscreen&&document.exitFullscreen);
+    button.disabled=!supported;
+    button.title=supported?'Tela cheia opcional — a orientação do aparelho não será forçada.':'Tela cheia não é suportada neste navegador.';
+  }
+
+  if(active)requestAnimationFrame(()=>window.scrollTo(0,0));
 }
+
+async function toggleFullscreen(){
+  try{
+    if(document.fullscreenElement){
+      await document.exitFullscreen();
+    }else if(document.documentElement.requestFullscreen){
+      await document.documentElement.requestFullscreen({navigationUI:'hide'});
+    }
+  }catch(err){
+    console.warn('Stick Lanes: não foi possível alternar tela cheia.',err);
+  }finally{
+    syncLayout();
+  }
+}
+
+/*
+ * Importante para Android:
+ * launchBattle NÃO solicita fullscreen e NÃO trava a orientação.
+ * A partida abre na orientação atual do aparelho; tela cheia é sempre opt-in.
+ */
 const oldLaunch=launchBattle;
-launchBattle=function(...args){const r=oldLaunch.apply(this,args);requestLandscape();syncOrientation();return r};
-window.addEventListener('resize',syncOrientation,{passive:true});
-window.addEventListener('orientationchange',()=>setTimeout(syncOrientation,80),{passive:true});
-document.addEventListener('fullscreenchange',syncOrientation);
-syncOrientation();
+launchBattle=function(...args){
+  const result=oldLaunch.apply(this,args);
+  syncLayout();
+  return result;
+};
+
+window.addEventListener('resize',syncLayout,{passive:true});
+window.addEventListener('orientationchange',()=>setTimeout(syncLayout,80),{passive:true});
+document.addEventListener('fullscreenchange',syncLayout);
+
+syncLayout();
 })();
