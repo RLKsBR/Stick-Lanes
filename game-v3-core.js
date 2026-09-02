@@ -27,7 +27,7 @@ let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
 const CELL_SIZE=520;
-let unitSeq=0,showTowerRanges=false,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
+let unitSeq=0,structureSeq=0,showTowerRanges=false,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
     unitCells={1:[new Map(),new Map(),new Map()],'-1':[new Map(),new Map(),new Map()]},
     waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
 const orders={1:['advance','advance','advance'],'-1':['advance','advance','advance']},spawnCd={};
@@ -165,15 +165,15 @@ function reset(){
  running=true;last=performance.now();requestAnimationFrame(loop)
 }
 function makeStructures(){
- structures=[];
+ structures=[];structureSeq=0;
  for(const side of [1,-1])for(let lane=0;lane<3;lane++){
    const xs=towerXs[side];
    xs.forEach((x,i)=>{
-     let t=towerTypes[i];structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
+     let t=towerTypes[i];structures.push({id:++structureSeq,side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
    });
    for(let i=0;i<xs.length-1;i++)for(let step=1;step<=2;step++){
      let x=xs[i]+(xs[i+1]-xs[i])*step/3,t=AUX_TURRET;
-     structures.push({side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
+     structures.push({id:++structureSeq,side,lane,x,kind:'tower',...t,maxHp:t.hp,lastAttack:0,dead:false,fortified:true,breachUntil:-999})
    }
  }
 }
@@ -197,7 +197,7 @@ function spawnUnit(side,lane,fac,u,opts={}){
    special:{...(u.special||{})},ability:u.ability,minion:!!opts.minion,minionType:opts.minionType||null,lastAttack:0,lastSkill:-999,lastDamaged:-999,
    stunUntil:0,slowUntil:0,dead:false,rewarded:false,chargeReady:true,revived:false,born,anim:Math.random()*10,
    powerFlash:-999,origSide:side,attackCount:0,radiation:0,acidStacks:0,lastMoved:born,runTime:0,combatSince:null,
-   lastTargetId:null,lastTargetSwitch:-999,mentalGuardReadyAt:born,musicUntil:-999};
+   lastTargetId:null,lastTargetSwitch:-999,objectiveId:null,mentalGuardReadyAt:born,musicUntil:-999};
  applySpawnPassive(obj);units.push(obj);return obj;
 }
 function canSpawnUnit(side,u){
@@ -313,7 +313,19 @@ function closestUnit(from,u,maxDist,pred=()=>true){
  return best
 }
 function nearestEnemy(u,range){let r=range*PX;return closestUnit(nearbyUnits(-u.side,u.lane,u.x,r),u,r)}
+function frontEnemyStructure(side,lane){
+ let a=aliveTowers(-side,lane);
+ if(!a.length)return{kind:'base',side:-side,lane,x:BASE_X[-side]};
+ return a.sort((x,y)=>side===1?x.x-y.x:y.x-x.x)[0]
+}
 function nextStructure(u){
+ if(u.minion){
+   let locked=structures.find(s=>!s.dead&&s.id===u.objectiveId);
+   if(locked)return locked;
+   let front=frontEnemyStructure(u.side,u.lane);
+   u.objectiveId=front.kind==='tower'?front.id:null;
+   return front
+ }
  let a=aliveTowers(-u.side,u.lane).filter(s=>u.side===1?s.x>=u.x-10:s.x<=u.x+10);
  return a.length?a.sort((x,y)=>Math.abs(x.x-u.x)-Math.abs(y.x-u.x))[0]:{kind:'base',side:-u.side,lane:u.lane,x:BASE_X[-u.side]}
 }
