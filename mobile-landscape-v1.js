@@ -3,7 +3,7 @@
 'use strict';
 
 const root=document.documentElement;
-const gameUI=document.getElementById('gameUI');
+const gameUI=document.querySelector('#gameUI');
 let fullscreenButton=null;
 
 function isMatchActive(){return !!gameUI&&!gameUI.hidden}
