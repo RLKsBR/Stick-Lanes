@@ -1,27 +1,28 @@
 (()=>{
+const BUILD='?v=20260902-bootfix1';
 const mapScript=document.createElement('script');
-mapScript.src='map-sci-fi-v4.js';
+mapScript.src='map-sci-fi-v4.js'+BUILD;
 mapScript.onload=()=>{
   const assetScript=document.createElement('script');
-  assetScript.src='map-assets-v4.js';
+  assetScript.src='map-assets-v4.js'+BUILD;
   assetScript.onload=()=>{
     const cameraScript=document.createElement('script');
-    cameraScript.src='map-2_5d-v5.js';
+    cameraScript.src='map-2_5d-v5.js'+BUILD;
     cameraScript.onload=()=>{
       const layoutScript=document.createElement('script');
-      layoutScript.src='map-layout-v5.js';
+      layoutScript.src='map-layout-v5.js'+BUILD;
       layoutScript.onload=()=>{
         const movementScript=document.createElement('script');
-        movementScript.src='movement-v6.js';
+        movementScript.src='movement-v6.js'+BUILD;
         movementScript.onload=()=>{
           const minionSpeed=document.createElement('script');
-          minionSpeed.src='minion-speed-v1.js';
+          minionSpeed.src='minion-speed-v1.js'+BUILD;
           minionSpeed.onload=()=>{
             const minionWave=document.createElement('script');
-            minionWave.src='minion-wave-v2.js';
+            minionWave.src='minion-wave-v2.js'+BUILD;
             minionWave.onload=()=>{
               const turretDefense=document.createElement('script');
-              turretDefense.src='turret-defense-v1.js';
+              turretDefense.src='turret-defense-v1.js'+BUILD;
               document.head.appendChild(turretDefense);
             };
             document.head.appendChild(minionWave);
