@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const rafQueue = [];
 const dynamicScripts = [];
 const allElements = [];
+let fullscreenRequests = 0;
 
 function makeContext2d() {
   const gradient = { addColorStop() {} };
@@ -48,6 +49,7 @@ class FakeElement {
     this.classList = new FakeClassList();
     this.listeners = {};
     this._innerHTML = '';
+    this.isConnected = true;
     allElements.push(this);
   }
   set className(value) {
@@ -71,10 +73,14 @@ class FakeElement {
   addEventListener(type, handler) { (this.listeners[type] ||= []).push(handler); }
   setAttribute(name, value) { this[name] = String(value); }
   setPointerCapture() {}
-  requestFullscreen() { return Promise.resolve(); }
+  requestFullscreen() { fullscreenRequests++; return Promise.resolve(); }
   getBoundingClientRect() { return { width: 1800, height: 1000, left: 0, top: 0 }; }
   getContext() { return makeContext2d(); }
-  click() { if (typeof this.onclick === 'function') this.onclick({ target: this }); }
+  click() {
+    if (this.disabled) return;
+    if (typeof this.onclick === 'function') this.onclick({ target: this });
+    for (const handler of this.listeners.click || []) handler({ target: this });
+  }
   querySelectorAll(selector) {
     const descendants = [];
     const visit = node => { for (const child of node.children) { descendants.push(child); visit(child); } };
@@ -85,6 +91,7 @@ class FakeElement {
     if (selector === '.laneControl') return descendants.filter(x => x.classList.contains('laneControl'));
     if (selector === '.unitBtn') return descendants.filter(x => x.classList.contains('unitBtn'));
     if (selector === '.spawn') return descendants.filter(x => x.classList.contains('spawn'));
+    if (selector === '.hudActions') return descendants.filter(x => x.classList.contains('hudActions'));
     return [];
   }
   querySelector(selector) {
@@ -100,6 +107,17 @@ class FakeElement {
   }
 }
 
+const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+for (const id of ['menuPlay', 'menuRobots']) {
+  const match = indexHtml.match(new RegExp(`<button[^>]*id=["']${id}["'][^>]*>`, 'i'));
+  if (!match) throw new Error(`botão ${id} não existe no HTML real`);
+  if (/\sdisabled(?:\s|=|>)/i.test(match[0] + '>')) throw new Error(`botão ${id} nasce disabled no HTML real`);
+}
+
+const mobileSource = fs.readFileSync(path.join(root, 'mobile-landscape-v1.js'), 'utf8');
+if (/orientation\s*\.\s*lock\s*\(/.test(mobileSource)) throw new Error('mobile ainda força orientation.lock');
+if (/launchBattle\s*=/.test(mobileSource)) throw new Error('mobile ainda intercepta launchBattle');
+
 const elements = new Map();
 const byId = id => {
   if (!elements.has(id)) elements.set(id, new FakeElement(id === 'game' ? 'canvas' : 'div', id));
@@ -112,8 +130,12 @@ const byId = id => {
   'factionIdentity', 'camLeft', 'camRight', 'camHome', 'camMid', 'camEnemy',
   'towerRanges', 'modeStatus', 'gold', 'playerBase', 'enemyBase', 'playerTowers',
   'enemyTowers', 'matchTimer', 'waveTimer', 'compName', 'saveComp', 'savedComps',
-  'loadComp', 'deleteComp', 'compMessage', 'zoomBadge'
+  'loadComp', 'deleteComp', 'compMessage', 'zoomBadge', 'bootStatus'
 ].forEach(byId);
+
+const hudActions = new FakeElement('div');
+hudActions.className = 'hudActions';
+byId('gameUI').appendChild(hudActions);
 
 const speedControls = byId('simSpeedControls');
 for (const speed of ['1', '3', '10', '20']) {
@@ -129,7 +151,9 @@ const document = {
   fullscreenElement: null,
   createElement: tag => new FakeElement(tag),
   addEventListener() {},
+  exitFullscreen: () => Promise.resolve(),
   querySelector(selector) {
+    if (selector === '#gameUI .hudActions') return hudActions;
     if (selector.startsWith('#')) return byId(selector.slice(1));
     if (selector === '.statusPill') return new FakeElement('span');
     if (selector === '.cameraBar .muted') return new FakeElement('span');
@@ -157,7 +181,7 @@ const context = vm.createContext({
   cancelAnimationFrame() {},
   setTimeout: callback => { if (typeof callback === 'function') callback(); return 1; },
   clearTimeout() {},
-  MutationObserver: class { observe() {} },
+  MutationObserver: class { constructor(callback) { this.callback = callback; } observe() {} },
   Image: class {
     set src(value) { this._src = value; if (typeof this.onload === 'function') this.onload(); }
     get src() { return this._src; }
@@ -166,7 +190,7 @@ const context = vm.createContext({
     constructor(text, value) { super('option'); this.text = text; this.value = value; }
   },
   crypto: { randomUUID: () => 'test-id' },
-  screen: { orientation: { lock: () => Promise.resolve() } },
+  screen: { orientation: {} },
   alert() {},
   Math,
   Date,
@@ -212,6 +236,7 @@ while (dynamicScripts.length) {
   if (typeof script.onload === 'function') script.onload();
 }
 
+if (byId('menuPlay').disabled || byId('menuRobots').disabled) throw new Error('menu está bloqueado antes do clique');
 byId('menuRobots').click();
 for (let frame = 1; frame <= 650; frame++) {
   const callback = rafQueue.shift();
@@ -239,5 +264,6 @@ if (state.loadoutSize !== 8 || state.enemyLoadoutSize !== 8) throw new Error('IA
 if (state.structures !== 60) throw new Error(`estruturas inválidas: ${state.structures}`);
 if (state.matchTime < 22 || state.livingUnits === 0) throw new Error('primeira onda não entrou em combate');
 if (byId('simSpeedControls').hidden) throw new Error('controles de velocidade permaneceram ocultos');
+if (fullscreenRequests !== 0) throw new Error(`fullscreen foi solicitado automaticamente ${fullscreenRequests} vez(es)`);
 
-console.log(JSON.stringify(state, null, 2));
+console.log(JSON.stringify({ ...state, fullscreenRequests }, null, 2));
