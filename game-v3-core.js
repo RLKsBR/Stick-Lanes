@@ -112,13 +112,13 @@ function buildUI(){
  let all=document.createElement('div');all.className='laneControl laneControlAll';
  all.innerHTML=`<strong>Todas</strong><small class="muted">3 lanes</small><div class="laneBtns">${ORDER_OPTIONS.map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
  all.querySelectorAll('button').forEach(b=>b.onclick=()=>{
-   orders[1]=[b.dataset.v,b.dataset.v,b.dataset.v];syncOrderButtons(1)
+   orders[1]=[b.dataset.v,b.dataset.v,b.dataset.v];window.SL_TACTICAL_TARGETING?.clearTroopTargets?.();syncOrderButtons(1)
  });
  lc.appendChild(all);
  ['Lane superior','Lane central','Lane inferior'].forEach((name,i)=>{
    let d=document.createElement('div');d.className='laneControl';
    d.innerHTML=`<strong>${name}</strong><small class="muted">Ordem da lane</small><div class="laneBtns">${ORDER_OPTIONS.map(([v,l])=>`<button class="secondary ${v==='advance'?'active':''}" data-v="${v}">${l}</button>`).join('')}</div>`;
-   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{orders[1][i]=b.dataset.v;syncOrderButtons(1)});
+   d.querySelectorAll('button').forEach(b=>b.onclick=()=>{orders[1][i]=b.dataset.v;window.SL_TACTICAL_TARGETING?.clearTroopTargets?.(i);syncOrderButtons(1)});
    lc.appendChild(d)
  });
  let sb=$('#spawnbar');sb.innerHTML='';
@@ -320,6 +320,7 @@ function rebuildUnitIndex(){
  unitCells={1:[new Map(),new Map(),new Map()],'-1':[new Map(),new Map(),new Map()]};
  waveFrontIndex={1:[null,null,null],'-1':[null,null,null]};
  for(const u of units)if(!u.dead){
+   if(u.tacticalWorld)continue;
    unitIndex[u.side][u.lane].push(u);
    let cell=Math.floor(u.x/CELL_SIZE),map=unitCells[u.side][u.lane];if(!map.has(cell))map.set(cell,[]);map.get(cell).push(u);
    if(u.minion){let old=waveFrontIndex[u.side][u.lane];if(!old||(u.side===1?u.x>old.x:u.x<old.x))waveFrontIndex[u.side][u.lane]=u}
@@ -415,6 +416,7 @@ function update(dt,t){
  for(const u of [...units]){
    if(u.dead)continue;passiveTick(u,dt,t);if(u.hp<=0){killUnit(u,null,t);continue}
    if(t<u.stunUntil)continue;
+   if(window.SL_TACTICAL_TARGETING?.handleUnit?.(u,dt,t))continue;
    support(u,t);
    let order=u.minion?'advance':orders[u.side][u.lane],s=nextStructure(u),sy=s.kind==='base'?BASE_Y:structureY(s),
        sr=Math.hypot(s.x-u.x,sy-yOf(u))<=u.range*PX,foe=orderedEnemy(u,u.range,order,s),
@@ -502,6 +504,7 @@ function killUnit(b,killer,t){
 }
 function attack(a,b,t){
  if(Math.random()<dodgeChance(b))return;
+ if(a.special.legend&&b.special.legend){a.legendAggroUntil=t+5;a.legendAggroDefendingSide=b.side}
  let def=effectiveDefense(b)*(1-Math.min(.2,b.acidStacks*.04));
  if(a.special.armorPierce)def*=1-a.special.armorPierce;
  if(a.fac==='Físicos')def*=.90;

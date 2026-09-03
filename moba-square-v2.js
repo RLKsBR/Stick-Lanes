@@ -11,6 +11,10 @@ const ROUTES={
   1:[[620,6180],[1300,5500],[2000,4800],[2700,4100],[3400,3400],[4100,2700],[4800,2000],[5500,1300],[6180,620]],
   2:[[620,6180],[1280,6280],[2250,6300],[3400,6240],[4650,6040],[5600,5550],[6080,4600],[6280,3350],[6300,2250],[6280,1280],[6180,620]]
 };
+const BUFF_ZONES=[
+  {id:1,x:1700,y:2500,r:180},{id:2,x:1800,y:4400,r:180},
+  {id:3,x:5000,y:1600,r:180},{id:4,x:5100,y:4300,r:180}
+];
 
 function clampV(v,a,b){return Math.max(a,Math.min(b,v))}
 function routeMeta(points){
@@ -26,7 +30,7 @@ function routePoint(lane,t,offset=0){
   let x=a[0]+(b[0]-a[0])*q,y=a[1]+(b[1]-a[1])*q,dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy)||1;
   dx/=len;dy/=len;const nx=-dy,ny=dx;return{x:x+nx*offset,y:y+ny*offset,a:Math.atan2(dy,dx),nx,ny,tx:dx,ty:dy};
 }
-function unitPos(u){return routePoint(u.lane,logicalT(u.x),(u.sub||0)*SUB_LANE_GAP)}
+function unitPos(u){return u.tacticalWorld?{x:u.tacticalWorld.x,y:u.tacticalWorld.y,a:u.tacticalWorld.a||0,nx:0,ny:1,tx:1,ty:0}:routePoint(u.lane,logicalT(u.x),(u.sub||0)*SUB_LANE_GAP)}
 function structurePos(s){return routePoint(s.lane,logicalT(s.x),(s.subOffset||0)*SUB_LANE_GAP)}
 function projectedTowerRange(s){
   const route=RM[s.lane]||RM[1],worldLength=BASE_X[-1]-BASE_X[1];
@@ -40,6 +44,11 @@ function clampCam(){vCamX=clampV(vCamX,0,Math.max(0,MAP_W-visibleW()));vCamY=cla
 function updateBadge(){let b=document.querySelector('#zoomBadge');if(b)b.textContent=Math.round(vZoom*100)+'%'}
 function centerAt(x,y,z=vZoom){vZoom=clampV(z,MIN_Z,MAX_Z);vCamX=x-visibleW()/2;vCamY=y-visibleH()/2;clampCam();updateBadge()}
 function screenToWorld(x,y){return{x:vCamX+x/vZoom,y:vCamY+y/vZoom}}
+function nearestRoutePoint(w){
+  let best={lane:0,t:0,distance:Infinity,point:null};
+  for(let lane=0;lane<3;lane++)for(let t=0;t<=1.0001;t+=.006){let p=routePoint(lane,Math.min(1,t)),d=Math.hypot(p.x-w.x,p.y-w.y);if(d<best.distance)best={lane,t:Math.min(1,t),distance:d,point:p}}
+  return best
+}
 centerAt(1500,5550,.64);
 
 function pathRoute(lane,t1=0,t2=1,offset=0,step=.012){
@@ -68,8 +77,18 @@ function drawTechCorridors(){
   /* Junção central das três lanes + ligação top/mid entre as torres de 30% e 40%. */
   const links=[[0,.50,1,.50],[1,.50,2,.50],[0,.35,1,.35]];
   for(const [la,ta,lb,tb] of links){const a=routePoint(la,ta),b=routePoint(lb,tb);lineWorld(a,b,132,'#0a0f13');lineWorld(a,b,112,'#1c282e');lineWorld(a,b,88,'#222f35');lineWorld(a,b,2,'rgba(180,196,201,.14)')}
-  const pads=[[1700,2500,210],[5100,4300,220],[3400,3400,250],[1800,4400,180],[5000,1600,180]];
+  const pads=[[3400,3400,250]];
   for(const [x,y,r] of pads){ctx.fillStyle='#0a0f13';ctx.beginPath();ctx.arc(x,y,r+18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#172228';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(173,191,197,.12)';ctx.lineWidth=6;ctx.stroke();ctx.strokeStyle='rgba(173,191,197,.08)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r*.62,0,Math.PI*2);ctx.stroke()}
+}
+
+function drawBuffZones(t){
+  for(const z of BUFF_ZONES){
+    const pulse=1+Math.sin(t*1.7+z.id)*.035;ctx.save();ctx.translate(z.x,z.y);ctx.scale(pulse,pulse);
+    ctx.fillStyle='rgba(24,41,39,.88)';ctx.beginPath();ctx.arc(0,0,z.r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#7dcdb2';ctx.globalAlpha=.42;ctx.lineWidth=8;ctx.setLineDash([20,14]);ctx.beginPath();ctx.arc(0,0,z.r-10,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    ctx.globalAlpha=.7;ctx.lineWidth=3;for(let i=0;i<4;i++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.moveTo(0,-z.r+28);ctx.lineTo(0,-z.r+62);ctx.stroke()}
+    ctx.globalAlpha=1;ctx.fillStyle='#d9f5e9';ctx.textAlign='center';ctx.font='900 34px system-ui';ctx.fillText('B'+z.id,0,12);ctx.font='700 15px system-ui';ctx.fillStyle='#8fd9c0';ctx.fillText('LENDA',0,39);ctx.restore()
+  }
 }
 
 function drawLane(lane){
@@ -161,7 +180,7 @@ function drawMini(){
 
 function drawMap(t){
   ctx.fillStyle='#05090c';ctx.fillRect(0,0,VIEW_W,VIEW_H);
-  ctx.save();ctx.scale(vZoom,vZoom);ctx.translate(-vCamX,-vCamY);drawPanelField();drawTechCorridors();drawLane(0);drawLane(1);drawLane(2);drawBasePlatform(1);drawBasePlatform(-1);structures.forEach(s=>drawStructure(s,t));units.slice().sort((a,b)=>unitPos(a).y-unitPos(b).y).forEach(u=>drawProjectedUnit(u,t));ctx.restore();drawMini();
+  ctx.save();ctx.scale(vZoom,vZoom);ctx.translate(-vCamX,-vCamY);drawPanelField();drawTechCorridors();drawBuffZones(t);drawLane(0);drawLane(1);drawLane(2);drawBasePlatform(1);drawBasePlatform(-1);structures.forEach(s=>drawStructure(s,t));units.slice().sort((a,b)=>unitPos(a).y-unitPos(b).y).forEach(u=>drawProjectedUnit(u,t));ctx.restore();drawMini();
 }
 draw=drawMap;
 
@@ -174,10 +193,10 @@ function isMiniPoint(p){return p.x>=VIEW_W-238&&p.x<=VIEW_W-18&&p.y>=18&&p.y<=23
 function nearestLaneAt(w){let best=0,bd=Infinity;for(let l=0;l<3;l++)for(let t=0;t<=1;t+=.015){const p=routePoint(l,t),d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=l}}return best}
 function captureDown(e){if(e.target!==canvas)return;e.preventDefault();e.stopPropagation();const p=canvasPos(e);pointers.set(e.pointerId,p);canvas.setPointerCapture?.(e.pointerId);if(pointers.size===1)gesture={type:'pan',id:e.pointerId,start:p,last:p,moved:false};else if(pointers.size===2){const a=[...pointers.values()],dx=a[1].x-a[0].x,dy=a[1].y-a[0].y,m={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};gesture={type:'pinch',dist:Math.hypot(dx,dy),zoom:vZoom,anchor:screenToWorld(m.x,m.y)}}}
 function captureMove(e){if(!pointers.has(e.pointerId))return;e.preventDefault();e.stopPropagation();const p=canvasPos(e);pointers.set(e.pointerId,p);if(pointers.size>=2){const a=[...pointers.values()].slice(0,2),dx=a[1].x-a[0].x,dy=a[1].y-a[0].y,m={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};if(gesture?.type!=='pinch')gesture={type:'pinch',dist:Math.hypot(dx,dy),zoom:vZoom,anchor:screenToWorld(m.x,m.y)};vZoom=clampV(gesture.zoom*Math.hypot(dx,dy)/Math.max(20,gesture.dist),MIN_Z,MAX_Z);vCamX=gesture.anchor.x-m.x/vZoom;vCamY=gesture.anchor.y-m.y/vZoom;clampCam();updateBadge();return}if(gesture?.type==='pan'&&gesture.id===e.pointerId){const dx=p.x-gesture.last.x,dy=p.y-gesture.last.y;if(Math.hypot(p.x-gesture.start.x,p.y-gesture.start.y)>7)gesture.moved=true;vCamX-=dx/vZoom;vCamY-=dy/vZoom;gesture.last=p;clampCam()}}
-function captureUp(e){if(!pointers.has(e.pointerId))return;e.preventDefault();e.stopPropagation();const p=canvasPos(e),g=gesture;pointers.delete(e.pointerId);if(g?.type==='pan'&&!g.moved){if(isMiniPoint(p)){const x0=VIEW_W-238,y0=18,pad=12,size=220,w={x:clampV((p.x-x0-pad)/(size-pad*2),0,1)*MAP_W,y:clampV((p.y-y0-pad)/(size-pad*2),0,1)*MAP_H};centerAt(w.x,w.y,vZoom)}else selectedLane=nearestLaneAt(screenToWorld(p.x,p.y))}if(pointers.size===1){const q=[...pointers.entries()][0];gesture={type:'pan',id:q[0],start:q[1],last:q[1],moved:true}}else gesture=null}
+function captureUp(e){if(!pointers.has(e.pointerId))return;e.preventDefault();e.stopPropagation();const p=canvasPos(e),g=gesture;pointers.delete(e.pointerId);if(g?.type==='pan'&&!g.moved){if(isMiniPoint(p)){const x0=VIEW_W-238,y0=18,pad=12,size=220,w={x:clampV((p.x-x0-pad)/(size-pad*2),0,1)*MAP_W,y:clampV((p.y-y0-pad)/(size-pad*2),0,1)*MAP_H};centerAt(w.x,w.y,vZoom)}else{const w=screenToWorld(p.x,p.y),handled=window.SL_TACTICAL_TARGETING?.handleMapTap?.({world:w,canvas:p,client:{x:e.clientX,y:e.clientY}});if(!handled)selectedLane=nearestLaneAt(w)}}if(pointers.size===1){const q=[...pointers.entries()][0];gesture={type:'pan',id:q[0],start:q[1],last:q[1],moved:true}}else gesture=null}
 document.addEventListener('pointerdown',captureDown,true);document.addEventListener('pointermove',captureMove,true);document.addEventListener('pointerup',captureUp,true);document.addEventListener('pointercancel',captureUp,true);
 document.addEventListener('wheel',e=>{if(e.target!==canvas)return;e.preventDefault();e.stopPropagation();const p=canvasPos(e),a=screenToWorld(p.x,p.y);vZoom=clampV(vZoom*Math.exp(-e.deltaY*.0015),MIN_Z,MAX_Z);vCamX=a.x-p.x/vZoom;vCamY=a.y-p.y/vZoom;clampCam();updateBadge()},{capture:true,passive:false});
 
 updateBadge();
-window.SL_MOBA_SQUARE_V2={routePoint,unitPos,structurePos,centerAt,get zoom(){return vZoom},get cameraY(){return vCamY},mapWidth:MAP_W,mapHeight:MAP_H,mapScale:MAP_SCALE,subLaneGap:SUB_LANE_GAP,routeLengths:Object.fromEntries(Object.entries(RM).map(([k,v])=>[k,v.total]))};
+window.SL_MOBA_SQUARE_V2={routePoint,unitPos,structurePos,screenToWorld,nearestRoutePoint,centerAt,buffZones:BUFF_ZONES,get zoom(){return vZoom},get cameraX(){return vCamX},get cameraY(){return vCamY},mapWidth:MAP_W,mapHeight:MAP_H,mapScale:MAP_SCALE,subLaneGap:SUB_LANE_GAP,routeLengths:Object.fromEntries(Object.entries(RM).map(([k,v])=>[k,v.total]))};
 })();

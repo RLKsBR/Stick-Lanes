@@ -21,13 +21,16 @@ O menu principal possui somente:
 - Mundo horizontal de **22.500 unidades**.
 - **3 lanes**, cada uma com **5 sub-lanes mecânicas**, sem linhas artificiais dividindo o piso.
 - **4 torres principais + 6 torretas auxiliares por lane** e base com **6.000 de vida**.
-- O alcance é recalculado pelo comprimento real de cada trecho. Torre + par de torretas + torre cobrem pelo menos **75%** de todo intervalo defensivo (77,5% nas laterais e 79,9% na mid no mapa atual).
+- O alcance é recalculado pelo comprimento real de cada trecho, mas nunca pode reduzir o alcance-base de uma torre. Torre + par de torretas + torre cobrem continuamente todo intervalo defensivo no mapa atual, acima do piso de **75%**.
 - As torretas possuem 900 de vida, ficam emparelhadas no mesmo progresso da rota e deixam somente as sub-lanes externas como passagem.
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
 - Economia: **+30 de ouro a cada 2 segundos**.
 - Ordens por lane: **Base**, **Atrás**, **Frente**, **Avançar** e **Atacar**, com uma faixa **Todas** que aplica a mesma ordem às três lanes.
 - A IA usa ouro, cooldowns e unidades válidas como o jogador; não recebe bônus invisíveis.
 - A IA renderizada aprende durante as partidas: ajusta pesos das ordens, preferência de lane e desempenho das tropas; a memória fica separada por combinação de facções.
+- Um toque numa torre ou ponto da lane abre o comando contextual **Lenda / Tropas**. Tropas permanecem na própria lane; a Lenda pode atravessar o mapa. Nas quatro buff zones entre lanes, somente a Lenda pode receber o comando.
+- A navegação rápida **Lenda / Top / Mid / Bot** centraliza a câmera na Lenda ou na tropa comprável mais avançada da lane.
+- Torres priorizam normalmente **minions → tropas → Lendas**. Quando uma Lenda agride uma Lenda aliada dentro da defesa, a prioridade temporária inverte para **Lendas → tropas → minions**.
 
 **Avançar** acompanha a onda aliada, prefere limpar minions e ataca estruturas quando existe suporte. **Atacar** não exige minions, prefere tropas inimigas e não persegue um alvo para além da estrutura inimiga atual.
 

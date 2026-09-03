@@ -48,6 +48,9 @@ async function runCase(name,viewport){
     laneCards:document.querySelectorAll('#laneControls .laneControl').length,
     globalCommands:document.querySelectorAll('#laneControls .laneControlAll button').length,
     adaptive:document.querySelector('#modeStatus')?.textContent.includes('IA adaptativa'),
+    quickCameraButtons:document.querySelectorAll('#quickCameraBar button').length,
+    buffZones:window.SL_MOBA_SQUARE_V2?.buffZones?.length,
+    tacticalTargeting:!!window.SL_TACTICAL_TARGETING,
     canvasRect:(()=>{const r=document.querySelector('#game')?.getBoundingClientRect();return r?{w:r.width,h:r.height}:null})()
   }));
 
@@ -56,11 +59,27 @@ async function runCase(name,viewport){
   if(state1.structures!==60)throw new Error(`${name}: esperado 60 estruturas, recebeu ${state1.structures}`);
   if(state1.laneCards!==4||state1.globalCommands!==5)throw new Error(`${name}: barra global/lanes incompleta: ${state1.laneCards} cartões, ${state1.globalCommands} comandos globais`);
   if(!state1.adaptive)throw new Error(`${name}: IA adaptativa não foi ativada`);
+  if(state1.quickCameraButtons!==4||state1.buffZones!==4||!state1.tacticalTargeting)throw new Error(`${name}: navegação/comando contextual não foi carregado`);
   if(state1.fullscreen)throw new Error(`${name}: fullscreen entrou automaticamente`);
   if(state1.error)throw new Error(`${name}: erro runtime ${JSON.stringify(state1.error)}`);
   if(!state1.health||state1.health.rafFrames<10)throw new Error(`${name}: RAF não progrediu: ${JSON.stringify(state1.health)}`);
   if(state1.health.lastFrameAgeMs>700)throw new Error(`${name}: main thread/RAF aparenta travado: ${state1.health.lastFrameAgeMs}ms`);
   if(!state1.canvasRect||state1.canvasRect.w<=0||state1.canvasRect.h<=0)throw new Error(`${name}: canvas sem área visível`);
+
+  const targeting=await page.evaluate(()=>{
+    gameMode='pve';
+    const probe={name:'Lenda QA',role:'unique',hp:900,def:20,atk:20,speed:5,range:1.2,rate:1,cost:10,gen:1,special:{legend:true},ability:{name:'QA',desc:''}};
+    const legend=spawnUnit(1,0,'Medievais',probe),tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),world=SL_MOBA_SQUARE_V2.structurePos(tower);
+    SL_TACTICAL_TARGETING.handleMapTap({world,client:{x:200,y:180},canvas:{x:200,y:180}});
+    const towerChoices=document.querySelectorAll('#tacticalCommandMenu button').length;
+    document.querySelector('#tacticalCommandMenu button[data-group="legend"]')?.click();
+    const crossing=!!legend.tacticalWorld;
+    const buff=SL_MOBA_SQUARE_V2.buffZones[0];SL_TACTICAL_TARGETING.handleMapTap({world:{x:buff.x,y:buff.y},client:{x:210,y:190},canvas:{x:210,y:190}});
+    const buffChoices=document.querySelectorAll('#tacticalCommandMenu button').length;
+    document.querySelector('#tacticalCommandMenu button[data-group="legend"]')?.click();
+    gameMode='robot';return{towerChoices,buffChoices,crossing,buffCommand:legend.tacticalDestination?.kind}
+  });
+  if(targeting.towerChoices!==2||targeting.buffChoices!==1||!targeting.crossing||targeting.buffCommand!=='buff')throw new Error(`${name}: menu contextual inválido ${JSON.stringify(targeting)}`);
 
   // 20x também precisa continuar responsivo; aqui já devem nascer ondas/unidades.
   await page.click('#simSpeedControls button[data-speed="20"]',{timeout:3000});

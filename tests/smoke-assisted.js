@@ -230,6 +230,7 @@ const staticScripts = [
   'visual-lote-01.js', 'visual-lote-02.js', 'visual-lote-03.js',
   'visual-lote-04.js', 'visual-lote-05.js', 'visual-team-structures.js',
   'visual-team-range.js', 'frontline-moba-v1.js', 'moba-square-v2.js',
+  'tactical-targeting-v1.js',
   'mobile-landscape-v1.js', 'match-focus-v1.js'
 ];
 staticScripts.forEach(run);
@@ -286,6 +287,24 @@ const collision = vm.runInContext(`(()=>{
   move(probe,pair.x+direction*500,.1);return{target:probe.subTarget,sub:probe.sub}
 })()`, context);
 
+const tactical = vm.runInContext(`(()=>{
+  gameMode='pve';
+  const base={role:'fighter',hp:500,def:20,atk:20,speed:5,range:1.2,rate:1,cost:10,gen:1,ability:{name:'Teste',desc:''}};
+  const troop=spawnUnit(1,1,'Medievais',{...base,name:'Tropa de teste',special:{}});troop.x=7000;
+  const legend=spawnUnit(1,0,'Medievais',{...base,name:'Lenda de teste',role:'unique',special:{legend:true}});legend.x=6500;
+  const tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),towerTarget=SL_TACTICAL_TARGETING.clickedTarget(SL_MOBA_SQUARE_V2.structurePos(tower));
+  const troopsOk=SL_TACTICAL_TARGETING.commandTroops(towerTarget)&&troop.manualTargetId===tower.id;
+  const legendOk=SL_TACTICAL_TARGETING.commandLegend(towerTarget)&&!!legend.tacticalWorld;
+  const buff=SL_MOBA_SQUARE_V2.buffZones[0],buffTarget=SL_TACTICAL_TARGETING.clickedTarget({x:buff.x,y:buff.y});SL_TACTICAL_TARGETING.commandLegend(buffTarget);
+  const before=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);SL_TACTICAL_TARGETING.handleUnit(legend,.5,simTime);const after=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);
+  const enemyLegend=spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;attack(enemyLegend,legend,simTime+1);
+  const minion={minion:true,special:{}},normalTroop={minion:false,special:{}},plainLegend={minion:false,special:{legend:true}};
+  const normal=[SL_TURRETS_V1.priorityFor(minion,false),SL_TURRETS_V1.priorityFor(normalTroop,false),SL_TURRETS_V1.priorityFor(plainLegend,false)];
+  const defensive=[SL_TURRETS_V1.priorityFor(plainLegend,true),SL_TURRETS_V1.priorityFor(normalTroop,true),SL_TURRETS_V1.priorityFor(minion,true)];
+  const cameraBefore=SL_MOBA_SQUARE_V2.cameraX;SL_TACTICAL_TARGETING.jumpCamera('1');
+  return{troopsOk,legendOk,buffOnly:buffTarget.kind==='buff'&&buffTarget.lane===null,moved:after<before,aggro:enemyLegend.legendAggroDefendingSide===1&&enemyLegend.legendAggroUntil>simTime,normal,defensive,cameraMoved:SL_MOBA_SQUARE_V2.cameraX!==cameraBefore}
+})()`,context);
+
 if (!byId('mainMenu').hidden) throw new Error('menu principal permaneceu visível');
 if (!globalOrderApplied) throw new Error('comando global não aplicou Atacar às três lanes');
 if (byId('gameUI').hidden) throw new Error('interface da batalha permaneceu oculta');
@@ -302,6 +321,8 @@ if (!state.gapCoverage.every(value=>value>=.75)) throw new Error(`cobertura defe
 if (state.aiAdjustments<1||!state.modeText.includes('IA adaptativa')) throw new Error('IA ao vivo não registrou aprendizagem adaptativa');
 if (!state.unitSubs.includes(-2) || !state.unitSubs.includes(2)) throw new Error('formação não ocupa as cinco sub-lanes');
 if (Math.abs(collision.target)!==2) throw new Error('unidade não desviou do bloqueio central das torretas para as sub-lanes 1 ou 5');
+if (!tactical.troopsOk||!tactical.legendOk||!tactical.buffOnly||!tactical.moved||!tactical.aggro||!tactical.cameraMoved) throw new Error(`comando contextual incompleto: ${JSON.stringify(tactical)}`);
+if (JSON.stringify(tactical.normal)!=='[0,1,2]'||JSON.stringify(tactical.defensive)!=='[0,1,2]') throw new Error(`prioridades das torres inválidas: ${JSON.stringify(tactical)}`);
 if (state.matchTime < 22 || state.livingUnits === 0) throw new Error('primeira onda não entrou em combate');
 if (byId('simSpeedControls').hidden) throw new Error('controles de velocidade permaneceram ocultos');
 if (fullscreenRequests !== 0) throw new Error(`fullscreen foi solicitado automaticamente ${fullscreenRequests} vez(es)`);

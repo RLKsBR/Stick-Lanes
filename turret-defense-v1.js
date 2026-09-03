@@ -3,7 +3,7 @@
 'use strict';
 (function(){
 const TURRET_HP=900,TURRET_ATK=10,TURRET_RATE=1.15;
-const SIDE_MAIN_SHARE=.23,CENTER_MAIN_SHARE=.24,TURRET_SHARE=.15,MIN_GAP_COVERAGE=.75;
+const SIDE_MAIN_SHARE=.23,CENTER_MAIN_SHARE=.24,TURRET_SHARE=.20,MIN_GAP_COVERAGE=.75;
 const blue=new Image(),red=new Image();blue.src='assets/map/turret-blue.svg';red.src='assets/map/turret-red.svg';
 const oldMake=makeStructures,oldTowerDamage=towerDamageTaken,oldDraw=drawTower;
 
@@ -26,7 +26,7 @@ function addTurrets(){
    line.forEach((s,i)=>{
      const adj=[];if(i>0)adj.push(gaps[i-1]);if(i<gaps.length)adj.push(gaps[i]);
      const share=lane===1?CENTER_MAIN_SHARE:SIDE_MAIN_SHARE;
-     if(adj.length)s.range=Math.max(8,Math.ceil(Math.min(...adj)*share/PX))
+     if(adj.length)s.range=Math.max(s.range||0,8,Math.ceil(Math.min(...adj)*share/PX))
    });
    for(let i=0;i<line.length-1;i++){
      const a=line[i],b=line[i+1],D=gaps[i],pairId=`${side}:${lane}:${i}`;
@@ -40,16 +40,24 @@ function addTurrets(){
 makeStructures=function(){oldMake();addTurrets()};
 towerDamageTaken=function(s,t){if(s.auxiliary){s.fortified=false;return 1}return oldTowerDamage(s,t)};
 
-function valid(s,u){let sy=structureY(s),r=s.range*PX;return u&&!u.dead&&u.side===-s.side&&u.lane===s.lane&&Math.hypot(u.x-s.x,yOf(u)-sy)<=r}
-function choose(s,used){let sy=structureY(s),r=s.range*PX;return nearbyUnits(-s.side,s.lane,s.x,r).filter(u=>valid(s,u)&&!used.has(u.id)).sort((a,b)=>{if(a.minion!==b.minion)return a.minion?-1:1;return Math.hypot(a.x-s.x,yOf(a)-sy)-Math.hypot(b.x-s.x,yOf(b)-sy)})[0]||null}
+function valid(s,u){let sy=structureY(s),r=s.range*PX;return u&&!u.dead&&!u.tacticalWorld&&u.side===-s.side&&u.lane===s.lane&&Math.hypot(u.x-s.x,yOf(u)-sy)<=r}
+function provokedLegend(s,u,t){return!!(u.special?.legend&&u.legendAggroUntil>t&&u.legendAggroDefendingSide===s.side)}
+function targetPriority(u,defensive){
+ if(defensive){if(u.special?.legend)return 0;return u.minion?2:1}
+ if(u.minion)return 0;return u.special?.legend?2:1
+}
+function choose(s,used,t){
+ let sy=structureY(s),r=s.range*PX,list=nearbyUnits(-s.side,s.lane,s.x,r).filter(u=>valid(s,u)),defensive=list.some(u=>provokedLegend(s,u,t));
+ return list.filter(u=>!used.has(u.id)||(defensive&&u.special?.legend)).sort((a,b)=>targetPriority(a,defensive)-targetPriority(b,defensive)||Math.hypot(a.x-s.x,yOf(a)-sy)-Math.hypot(b.x-s.x,yOf(b)-sy))[0]||null
+}
 function fire(s,v,t){let def=effectiveDefense(v),d=s.atk*(1-Math.min(.65,def/(def+140)))*incomingMultiplier(v);v.hp-=d;v.lastDamaged=t;if(v.hp<=0)killUnit(v,{side:s.side,fac:'Torre'},t);s.lastAttack=t;effects.push({type:'shot',x1:s.x,y1:structureY(s)-28,x2:v.x,y2:yOf(v)-10,t,side:s.side})}
-function mainFire(s,t){towerDamageTaken(s,t);if(t-s.lastAttack<s.rate)return;let sy=structureY(s),v=null,best=s.range*PX;for(const u of nearbyUnits(-s.side,s.lane,s.x,best)){if(u.dead)continue;let d=Math.hypot(u.x-s.x,yOf(u)-sy);if(d<=best){best=d;v=u}}if(v)fire(s,v,t)}
+function mainFire(s,t){towerDamageTaken(s,t);if(t-s.lastAttack<s.rate)return;let v=choose(s,new Set(),t);if(v)fire(s,v,t)}
 updateTowers=function(t){
  for(const s of structures)if(!s.dead&&!s.auxiliary)mainFire(s,t);
  const groups=new Map();for(const s of structures)if(!s.dead&&s.auxiliary){if(!groups.has(s.pairId))groups.set(s.pairId,[]);groups.get(s.pairId).push(s)}
  for(const pair of groups.values()){
    pair.sort((a,b)=>a.auxSlot-b.auxSlot);const used=new Set();
-   for(const s of pair){let v=units.find(u=>u.id===s.targetId);if(!valid(s,v)||used.has(v.id))v=choose(s,used);s.targetId=v?.id||null;if(v)used.add(v.id);if(v&&t-s.lastAttack>=s.rate)fire(s,v,t)}
+   for(const s of pair){let v=choose(s,used,t);s.targetId=v?.id||null;if(v&&!provokedLegend(s,v,t))used.add(v.id);if(v&&t-s.lastAttack>=s.rate)fire(s,v,t)}
  }
 };
 
@@ -63,5 +71,5 @@ drawTower=function(s,t){
 };
 
 if(structures.length&&!structures.some(s=>s.auxiliary))addTurrets();
-window.SL_TURRETS_V1={hp:TURRET_HP,atk:TURRET_ATK,rate:TURRET_RATE,minGapCoverage:MIN_GAP_COVERAGE,mainShare:{side:SIDE_MAIN_SHARE,center:CENTER_MAIN_SHARE},turretShare:TURRET_SHARE};
+window.SL_TURRETS_V1={hp:TURRET_HP,atk:TURRET_ATK,rate:TURRET_RATE,minGapCoverage:MIN_GAP_COVERAGE,mainShare:{side:SIDE_MAIN_SHARE,center:CENTER_MAIN_SHARE},turretShare:TURRET_SHARE,targetPriority:{normal:['minion','troop','legend'],legendDefense:['legend','troop','minion']},priorityFor:targetPriority};
 })();
