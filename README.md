@@ -26,13 +26,16 @@ O menu principal possui somente:
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
 - Antes da partida, o jogador define uma proporção de spawn **Top : Mid : Bot**. Há atalhos 1:1:1 e 3:1:1 para cada lane, além de valores personalizados; a distribuição é ponderada e determinística ao longo das compras.
 - Cada lado escolhe **uma Lenda**, fora das oito vagas. Ela entra gratuitamente com a primeira onda e começa concentrada em Top, Mid ou Bot.
-- As três Lendas iniciais são **Néfal, o Horizonte Interior** (controle mentalista), **Karkinos, o Quebra-Marés** (tanque crustáceo) e **Vesper, a Serpente do Eclipse** (mobilidade e dano em área).
+- As três Lendas iniciais são **Néfal, o Horizonte Interior** (alienígena de poder mágico), **Karkinos, o Quebra-Marés** (tanque crustáceo) e **Vesper, a Serpente do Eclipse** (mobilidade e dano em área). Todas receberam uma base de atributos realmente superior às tropas; o primeiro passe profundo de habilidade e arte está concentrado em Néfal.
+- Néfal começa no nível 1 e possui um teto provisório de 12 níveis, centralizado em configuração para ser recalibrado por simulação. Sua **Convergência do Horizonte** usa duas lanças psíquicas, com chance de uma terceira e limite absoluto de três. O dano tem tetos separados para Lendas, tropas e cada classe de minion; somente um minion atirador pode ser eliminado rapidamente, evitando limpeza em massa por uma habilidade.
+- Cada impacto de Néfal usa uma única tabela de anomalias com **40% de chance total**. Dentro desse total estão os **5% de roubo vital de 60% do dano**, os **7% de stun de 1 segundo** e seis efeitos menores. Os resultados são mutuamente exclusivos: um mesmo impacto não acumula vários procs.
 - Economia: **+30 de ouro a cada 2 segundos**.
 - Ordens por lane: **Base**, **Atrás**, **Frente**, **Avançar** e **Atacar**, com uma faixa **Todas** que aplica a mesma ordem às três lanes.
 - A IA usa ouro, cooldowns e unidades válidas como o jogador; não recebe bônus invisíveis.
 - A IA renderizada aprende durante as partidas: ajusta pesos das ordens, preferência de lane e desempenho das tropas; a memória fica separada por combinação de facções.
 - A IA também sorteia uma pré-estratégia e uma Lenda. A preferência de spawn pesa mais na abertura e perde força conforme os resultados observados pedem adaptação.
-- Um toque numa torre ou ponto da lane abre o comando contextual **Lenda / Tropas**. Tropas permanecem na própria lane; a Lenda pode atravessar o mapa. Nas quatro buff zones entre lanes, somente a Lenda pode receber o comando.
+- Um toque numa torre ou ponto da lane abre o comando contextual **Lenda / Tropas**. Tropas permanecem na própria lane; a Lenda pode atravessar o mapa. Os quatro pequenos círculos de buff foram substituídos por **dois territórios grandes**, cada um dividido em uma metade Laranja e uma metade Vermelha. Somente Lendas ocupam esses objetivos.
+- Permanecer continuamente por **15 segundos** na metade do próprio time ativa **Cegueira** contra o adversário por 60 segundos. Durante a cegueira, o jogador enxerga terreno e o próprio exército, mas unidades, estruturas e marcadores inimigos são removidos da visão e barreiras psíquicas cobrem o mapa. Depois do efeito há 60 segundos de recarga compartilhada entre as duas regiões do time.
 - A navegação rápida **Lenda / Top / Mid / Bot** centraliza a câmera na Lenda ou na tropa comprável mais avançada da lane.
 - Torres priorizam normalmente **minions → tropas → Lendas**. Quando uma Lenda agride uma Lenda aliada dentro da defesa, a prioridade temporária inverte para **Lendas → tropas → minions**.
 
@@ -85,7 +88,8 @@ Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) antes de alterar ordem de scripts,
 Arquivos principais:
 
 - `index.html`, `game-v3-core.js`, `game-v3-visuals.js` — jogo renderizado.
-- `legends-v1.js`, `visual-legends-v1.js`, `prestrategy-legends-v1.css` — catálogo, três rigs visuais e preparação pré-jogo das Lendas.
+- `legends-v1.js`, `legend-powers-v1.js`, `visual-legends-v1.js`, `prestrategy-legends-v1.css` — catálogo, progressão/habilidades, rigs visuais e preparação pré-jogo das Lendas.
+- `moba-square-v2.js`, `buff-regions-v1.js`, `tactical-targeting-v1.js` — territórios divididos, captura/cegueira e comandos contextuais.
 - `factions-v3.js`, `balance-patch-v3-3.js`, `minion-speed-v1.js` — dados e ajustes compartilhados.
 - `balance.html`, `balance-v3.js` — motor e interface base do laboratório.
 - `balance-map-v4.js`, `balance-minion-wave-v2.js`, `balance-turrets-v1.js`, `balance-strategy-v1.js` — camadas autoritativas do simulador atual.

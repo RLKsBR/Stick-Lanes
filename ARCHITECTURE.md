@@ -20,6 +20,8 @@ Este documento registra a autoridade real das camadas atuais. Ele não propõe u
 7. `extras.js` salva composição, proporção de spawn, Lenda e foco inicial no navegador.
 8. `visual-lote-01.js` a `visual-lote-05.js` especializam as 26 facções; `visual-legends-v1.js` deve vir depois deles para manter os rigs exclusivos das Lendas.
 9. `moba-square-v2.js` instala a projeção/câmera definitiva do mapa atual; `tactical-targeting-v1.js` adiciona alvo contextual, travessia da Lenda e atalhos de câmera.
+10. `buff-regions-v1.js` depende do mapa e do targeting: controla as quatro metades dos dois territórios, captura contínua, recarga, Cegueira e decisão de objetivo da IA.
+11. `legend-powers-v1.js` deve vir depois do sistema de mapa: adiciona progressão, tabela de procs, dano limitado por classe e efeitos espaciais de Néfal.
 
 ## Ordem do laboratório
 
@@ -50,6 +52,8 @@ Funções como `newSide`, `spawnWave`, `towerRetaliation`, `simMatch`, `run` e o
 | Ordens e combate do jogo visível | `game-v3-core.js` |
 | Lendas e pré-estratégia renderizada | `legends-v1.js` e `game-v3-core.js` |
 | Rigs procedurais das Lendas | `visual-legends-v1.js` |
+| Progressão e habilidades das Lendas | `legend-powers-v1.js` |
+| Captura e Cegueira dos territórios | `buff-regions-v1.js` |
 | Renderização provisória | `game-v3-visuals.js` |
 | Planos visuais finais | pasta Stick Lanes no Google Drive |
 

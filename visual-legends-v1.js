@@ -16,28 +16,28 @@ function teamGround(u,t,wide=43){
  ctx.save();ctx.scale(pulse,1);ctx.strokeStyle=team.primary;ctx.lineWidth=5;ctx.globalAlpha=.88;ctx.beginPath();ctx.ellipse(0,45,wide,12,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.32;ctx.fillStyle=team.primary;ctx.fill();ctx.restore()
 }
 function drawNefal(u,t,p){
- const dir=u.side,step=movingPulse(u,t),cast=attackPulse(u,t),float=Math.sin(t*2.4+u.anim)*2;
+ const dir=u.side,step=movingPulse(u,t),cast=attackPulse(u,t),float=Math.sin(t*1.7+u.anim)*3,reach=cast*29;
  ctx.save();ctx.translate(0,float);
- /* Pernas longas: contato alternado com o chão, tronco quase imóvel. */
- line(-7,13,-10-step*4,39,'#151020',10);line(-10-step*4,39,-17-step*7,47,p[1],7);
- line(7,13,10+step*4,39,'#151020',10);line(10+step*4,39,17+step*7,47,p[1],7);
- ellipse(-18-step*7,48,11,4,'#0b0b12',p[2],1.2);ellipse(18+step*7,48,11,4,'#0b0b12',p[2],1.2);
- /* Tórax de metal psíquico vivo. */
- ctx.fillStyle=metal(p);ctx.strokeStyle=p[2];ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-16,14);ctx.quadraticCurveTo(-22,-17,-12,-34);ctx.quadraticCurveTo(0,-43,12,-34);ctx.quadraticCurveTo(22,-17,16,14);ctx.quadraticCurveTo(0,25,-16,14);ctx.fill();ctx.stroke();
- ellipse(0,-4,6,10,'#17162d',p[2],2);ellipse(0,-4,2.6,6,p[2]);
- /* Braços finos e gestuais. */
- const reach=cast*15;
- line(-13,-25,-31,-7-step*2,p[0],7);line(-31,-7-step*2,-40-dir*reach,12,p[1],5);
- line(13,-25,30,-12+step*2,p[0],7);line(30,-12+step*2,dir*(43+reach),-7,p[1],5);
- for(const hand of [[-40-dir*reach,12],[dir*(43+reach),-7]])for(let f=-1;f<=1;f++)line(hand[0],hand[1],hand[0]+dir*8,hand[1]+f*4,p[3],1.3);
- /* Cabeça absolutamente sem rosto. */
- ellipse(0,-53,14,20,metal(p,-10,-70,10,-34),p[3],1.8);
- ctx.strokeStyle='rgba(128,244,231,.55)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(-3,-58,8,-2.3,-.7);ctx.stroke();
- /* Coroa/placas orbitais físicas, sem aura circular genérica. */
- for(let i=0;i<4;i++){let a=t*.42+i*Math.PI/2,x=Math.cos(a)*29,y=-48+Math.sin(a)*9;ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.fillStyle=i%2?p[2]:p[1];ctx.fillRect(-5,-2,10,4);ctx.restore()}
- if(cast){ctx.globalAlpha=cast*.75;ctx.strokeStyle=p[2];ctx.lineWidth=3;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(dir*48,-7,8+i*10,Math.PI*.65,Math.PI*1.35);ctx.stroke()}ctx.globalAlpha=1}
+ /* Ecos corporais deslocados: refração material, não aura genérica. */
+ for(const echo of [-1,1]){ctx.save();ctx.globalAlpha=.10+cast*.08;ctx.translate(echo*(7+cast*7),-2);ctx.strokeStyle=echo<0?p[2]:p[4];ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-66);ctx.lineTo(echo*7,-13);ctx.lineTo(echo*5,20);ctx.stroke();ctx.restore()}
+ /* Pernas muito longas e articulação inumana, com peso alternado. */
+ for(const side of [-1,1]){const phase=step*side,kneeX=side*(12+phase*5),footX=side*(20+phase*10);line(side*6,8,kneeX,34,p[0],9);line(kneeX,34,footX,58,p[1],6);ellipse(footX+side*6,59,13,3.4,'#070611',p[2],1.2)}
+ /* Coluna fina exposta e tórax translúcido em costelas assimétricas. */
+ const torso=ctx.createLinearGradient(-18,-68,18,16);torso.addColorStop(0,p[3]);torso.addColorStop(.18,p[4]);torso.addColorStop(.48,p[1]);torso.addColorStop(.78,p[2]);torso.addColorStop(1,p[0]);ctx.fillStyle=torso;ctx.strokeStyle=p[3];ctx.lineWidth=1.7;
+ ctx.beginPath();ctx.moveTo(-8,10);ctx.quadraticCurveTo(-13,-12,-18,-39);ctx.quadraticCurveTo(-13,-62,0,-69);ctx.quadraticCurveTo(17,-59,16,-37);ctx.quadraticCurveTo(10,-8,8,10);ctx.quadraticCurveTo(0,20,-8,10);ctx.fill();ctx.stroke();
+ ctx.strokeStyle='rgba(111,255,224,.65)';ctx.lineWidth=2;for(let i=0;i<5;i++){const y=-50+i*11,w=16-i*1.4;ctx.beginPath();ctx.moveTo(-w,y);ctx.quadraticCurveTo(0,y+8,w,y-2);ctx.stroke()}
+ line(0,-56,0,7,'rgba(241,216,255,.7)',2);ellipse(0,-18,4,8,'#080817',p[2],1.5);
+ /* Braços alcançam quase os joelhos; durante a magia, o gesto se multiplica. */
+ for(const side of [-1,1]){const casting=side===dir?reach:0,elbowX=side*(30+casting*.35),handX=side*(44+casting);line(side*12,-48,elbowX,-17+phaseFor(side,step),p[0],7);line(elbowX,-17+phaseFor(side,step),handX,22-cast*18,p[1],4.5);for(let f=-1;f<=1;f++)line(handX,22-cast*18,handX+side*(11+f*2),22-cast*18+f*6,p[3],1.25)}
+ /* Crânio alto, bifurcado e completamente sem face. */
+ ctx.fillStyle=torso;ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-111);ctx.quadraticCurveTo(-21,-100,-18,-81);ctx.quadraticCurveTo(-15,-67,0,-63);ctx.quadraticCurveTo(17,-69,19,-83);ctx.quadraticCurveTo(20,-101,0,-111);ctx.fill();ctx.stroke();
+ ctx.fillStyle='rgba(5,5,14,.72)';ctx.beginPath();ctx.moveTo(0,-106);ctx.quadraticCurveTo(-5,-91,0,-67);ctx.quadraticCurveTo(6,-91,0,-106);ctx.fill();
+ /* Fragmentos sólidos de espaço acompanham a cabeça em órbitas quebradas. */
+ for(let i=0;i<6;i++){const a=t*.31+i*Math.PI/3,x=Math.cos(a)*(28+(i%2)*8),y=-84+Math.sin(a)*15;ctx.save();ctx.translate(x,y);ctx.rotate(a+t*.2);ctx.fillStyle=i%3===0?p[4]:i%2?p[2]:p[3];ctx.beginPath();ctx.moveTo(-6,-2);ctx.lineTo(1,-6);ctx.lineTo(7,1);ctx.lineTo(-2,4);ctx.closePath();ctx.fill();ctx.restore()}
+ if(cast){ctx.globalAlpha=.45+cast*.4;ctx.strokeStyle=p[2];ctx.lineWidth=2.5;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(dir*(44+i*7),5-i*5);ctx.quadraticCurveTo(dir*(67+i*10),-28,dir*(88+i*12),-8+i*5);ctx.stroke()}ctx.globalAlpha=1}
  ctx.restore()
 }
+function phaseFor(side,step){return step*side*3}
 
 function crabLeg(side,index,phase,p){
  const y=-9+index*13,rootX=side*18,kneeX=side*(39+index*3),footX=side*(56+phase*7);
@@ -83,19 +83,30 @@ function drawLegendBody(u,t,data){
 }
 function drawLegendHud(u,data){
  const team=teamTheme(u.side),hp=Math.max(0,u.hp/u.maxHp);
- ctx.fillStyle='rgba(5,7,10,.9)';ctx.beginPath();ctx.roundRect(-45,-91,90,9,5);ctx.fill();ctx.fillStyle=team.primary;ctx.beginPath();ctx.roundRect(-45,-91,90*hp,9,5);ctx.fill();
- ctx.fillStyle='rgba(7,8,12,.9)';ctx.strokeStyle=data.palette[2];ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-67,64,134,24,7);ctx.fill();ctx.stroke();ctx.fillStyle='#fff8e8';ctx.font='900 11px system-ui';ctx.textAlign='center';ctx.fillText(`${u.name} • LENDA`,0,80)
+ const top=data.id==='nefal'?-139:-91,level=u.legendLevel||1,xp=u.legendNextXp?Math.min(1,(u.legendXp||0)/u.legendNextXp):0;
+ ctx.fillStyle='rgba(5,7,10,.92)';ctx.beginPath();ctx.roundRect(-50,top,100,10,5);ctx.fill();ctx.fillStyle=team.primary;ctx.beginPath();ctx.roundRect(-50,top,100*hp,10,5);ctx.fill();
+ ctx.fillStyle='rgba(5,7,10,.9)';ctx.fillRect(-50,top+12,100,4);ctx.fillStyle=data.palette[2];ctx.fillRect(-50,top+12,100*xp,4);
+ ctx.fillStyle='rgba(7,8,12,.92)';ctx.strokeStyle=data.palette[2];ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-72,67,144,25,7);ctx.fill();ctx.stroke();ctx.fillStyle='#fff8e8';ctx.font='900 11px system-ui';ctx.textAlign='center';ctx.fillText(`${u.name} • L${level} • LENDA`,0,84)
 }
 function renderLegendUnit(u,t){
- const data=legendData(u),y=yOf(u),bob=data.id==='vesper'?Math.sin(t*3+u.anim)*4:0,scale=(1.18+y/VIEW_H*.2)*(data.id==='karkinos'?1.13:1);
+ const data=legendData(u),y=yOf(u),bob=data.id==='vesper'?Math.sin(t*3+u.anim)*4:0,scale=(1.18+y/VIEW_H*.2)*(data.id==='karkinos'?1.13:data.id==='nefal'?1.24:1);
  ctx.save();ctx.translate(u.x,y+bob);ctx.scale(scale,scale);ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(0,48,data.id==='karkinos'?62:48,11,0,0,Math.PI*2);ctx.fill();teamGround(u,t,data.id==='karkinos'?58:45);drawLegendBody(u,t,data);drawLegendHud(u,data);ctx.restore()
 }
 drawUnit=function(u,t){if(!u.special?.legend)return previousDrawUnit(u,t);renderLegendUnit(u,t)};
 
 function drawPreview(canvas,id){
- const data=SL_LEGENDS_API.get(id),c=canvas.getContext('2d'),old=window.ctx,dummy={side:1,anim:1,lastAttack:-99,lastMoved:0,special:{legendKind:id},name:data.name,hp:data.hp,maxHp:data.hp};
- window.ctx=c;c.clearRect(0,0,canvas.width,canvas.height);let bg=c.createRadialGradient(180,88,8,180,88,170);bg.addColorStop(0,data.palette[0]+'aa');bg.addColorStop(1,'#090b11');c.fillStyle=bg;c.fillRect(0,0,canvas.width,canvas.height);c.save();c.translate(180,106);c.scale(id==='karkinos'?1.02:1.12,1.12);drawLegendBody(dummy,1.7,data);c.restore();c.fillStyle=data.palette[2];c.globalAlpha=.75;c.fillRect(24,157,312,2);c.globalAlpha=1;window.ctx=old
+ const data=SL_LEGENDS_API.get(id),c=canvas.getContext('2d'),old=window.ctx,dummy={side:1,anim:1,lastAttack:id==='nefal'?1.54:-99,lastMoved:0,special:{legendKind:id},name:data.name,hp:data.hp,maxHp:data.hp,legendLevel:1,legendXp:0,legendNextXp:120};
+ window.ctx=c;c.clearRect(0,0,canvas.width,canvas.height);let bg=c.createRadialGradient(180,88,8,180,88,170);bg.addColorStop(0,data.palette[0]+'cc');bg.addColorStop(.58,'#11101e');bg.addColorStop(1,'#07090d');c.fillStyle=bg;c.fillRect(0,0,canvas.width,canvas.height);c.save();c.translate(180,id==='nefal'?116:106);const scale=id==='karkinos'?1.02:id==='nefal'?1.02:1.12;c.scale(scale,scale);drawLegendBody(dummy,1.7,data);c.restore();c.fillStyle=data.palette[2];c.globalAlpha=.75;c.fillRect(24,157,312,2);c.globalAlpha=1;window.ctx=old
+}
+function drawWorldEffects(t){
+ const list=window.SL_NEFAL_SYSTEM?.fx||[];
+ for(const fx of list){const age=t-fx.t;if(age<0||age>fx.duration)continue;const life=1-age/fx.duration;ctx.save();ctx.globalAlpha=life;
+   if(fx.type==='lance'){
+     const bend=(fx.index-(fx.count-1)/2)*34;ctx.strokeStyle='rgba(37,10,62,.82)';ctx.lineWidth=22;ctx.beginPath();ctx.moveTo(fx.x1,fx.y1);ctx.quadraticCurveTo((fx.x1+fx.x2)/2,(fx.y1+fx.y2)/2+bend,fx.x2,fx.y2);ctx.stroke();ctx.strokeStyle=fx.color;ctx.lineWidth=7;ctx.stroke();ctx.strokeStyle='#ffffff';ctx.globalAlpha=life*.78;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=life;ctx.fillStyle=fx.color;ctx.beginPath();ctx.arc(fx.x2,fx.y2,18+age*55,0,Math.PI*2);ctx.fill()
+   }else if(fx.type==='proc'){ctx.strokeStyle=fx.color;ctx.lineWidth=6;ctx.beginPath();ctx.arc(fx.x,fx.y,34+age*48,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#f7eaff';ctx.font='900 17px system-ui';ctx.textAlign='center';ctx.fillText(fx.label,fx.x,fx.y-52-age*16)}ctx.restore()
+ }
+ while(list.length&&t-list[0].t>1.2)list.shift()
 }
 function drawPreviews(){document.querySelectorAll('.legendPreview').forEach(canvas=>drawPreview(canvas,canvas.dataset.legendPreview))}
-window.SL_LEGEND_VISUALS={drawPreviews,drawLegendBody};drawPreviews();
+window.SL_LEGEND_VISUALS={drawPreviews,drawLegendBody,drawWorldEffects};drawPreviews();
 })();

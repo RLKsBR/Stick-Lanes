@@ -296,7 +296,7 @@ function armyPower(side,lane){
 }
 function updateAIOrders(side){
  for(let lane=0;lane<3;lane++){
-   let own=armyPower(side,lane),foe=armyPower(-side,lane);
+   let own=armyPower(side,lane),foe=window.SL_BUFF_SYSTEM?.isBlinded?.(side)?own*(.62+Math.random()*.76):armyPower(-side,lane);
    let wave=units.some(u=>!u.dead&&u.minion&&u.side===side&&u.lane===lane);
    orders[side][lane]=wave&&own>=foe*.72?'advance':own>foe*1.45?'attack':foe>own*1.3?'behind':'advance'
  }
@@ -316,7 +316,7 @@ function runSideAI(side,t){
    return{x,score:unitValue(x.u)*novelty*roleFit*(.92+Math.random()*.16)}
  }).sort((a,b)=>b.score-a.score);
  let pick=scored[Math.floor(Math.random()*Math.min(3,scored.length))].x,key=pick.fac+'|'+pick.u.name;
- let laneScores=[0,1,2].map(l=>armyPower(-side,l)-armyPower(side,l)+Math.random()*8),lane=laneScores.indexOf(Math.max(...laneScores));
+ let blinded=window.SL_BUFF_SYSTEM?.isBlinded?.(side),laneScores=[0,1,2].map(l=>(blinded?Math.random()*24:armyPower(-side,l)-armyPower(side,l))+Math.random()*8),lane=laneScores.indexOf(Math.max(...laneScores));
  spendSideGold(side,pick.u.cost);ready[key]=t+pick.u.gen;usage[key]=(usage[key]||0)+1;spawnUnit(side,lane,pick.fac,pick.u)
 }
 function spawnWave(side){

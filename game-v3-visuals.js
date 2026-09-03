@@ -1,7 +1,7 @@
 function attackColor(u){if(u.special?.legendColor)return u.special.legendColor;let p=facMeta(u.fac)?.palette||['#ddd'];return p[0]}
 const TEAM_THEME={
-  1:{primary:'#4eb7ff',dark:'#173f62',soft:'rgba(78,183,255,.22)',label:'TIME AZUL'},
-  '-1':{primary:'#ff646c',dark:'#65252b',soft:'rgba(255,100,108,.22)',label:'TIME VERMELHO'}
+  1:{primary:'#f08a24',dark:'#603812',soft:'rgba(240,138,36,.22)',label:'TIME LARANJA',shape:'round'},
+  '-1':{primary:'#c93645',dark:'#5d1c26',soft:'rgba(201,54,69,.22)',label:'TIME VERMELHO',shape:'sharp'}
 };
 function teamTheme(side){return TEAM_THEME[side]||TEAM_THEME[1]}
 function seeded(n){let x=Math.sin(n*12.9898)*43758.5453;return x-Math.floor(x)}

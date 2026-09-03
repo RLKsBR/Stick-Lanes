@@ -14,7 +14,7 @@ function targetWorld(target){
  return target.world
 }
 function targetLabel(target){
- if(target.kind==='buff')return`Buff ${target.buff.id}`;
+ if(target.kind==='buff')return`${target.buff.name} • ${target.buff.side===PLAYER?'Laranja':'Vermelho'}`;
  if(target.structure)return target.structure.label||'Estrutura';
  return['Top','Mid','Bot'][target.lane]+' — posição'
 }
@@ -51,7 +51,7 @@ function closestStructure(world){
  return distance<=STRUCTURE_HIT_RADIUS?{structure:best,distance}:null
 }
 function clickedTarget(world){
- let buff=map.buffZones.find(z=>Math.hypot(z.x-world.x,z.y-world.y)<=z.r);if(buff)return{kind:'buff',buff,world:{x:buff.x,y:buff.y},lane:null,x:null};
+ let buff=map.buffZones.find(z=>map.containsBuff?map.containsBuff(z,world):Math.hypot(z.x-world.x,z.y-world.y)<=z.r);if(buff)return{kind:'buff',buff,world:{x:buff.x,y:buff.y},lane:null,x:null};
  let hit=closestStructure(world);if(hit){let s=hit.structure,t=(s.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]);return{kind:'structure',structure:s,lane:s.lane,x:s.x,t,world:map.structurePos(s)}}
  let route=map.nearestRoutePoint(world);if(route.distance<=LANE_HIT_RADIUS){let x=BASE_X[1]+route.t*(BASE_X[-1]-BASE_X[1]);return{kind:'point',lane:route.lane,x,t:route.t,world:route.point}}
  return null
