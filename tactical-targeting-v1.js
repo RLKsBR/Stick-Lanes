@@ -14,7 +14,7 @@ function targetWorld(target){
  return target.world
 }
 function targetLabel(target){
- if(target.kind==='buff')return`${target.buff.name} • ${target.buff.side===PLAYER?'Laranja':'Vermelho'}`;
+ if(target.kind==='buff')return`${target.buff.name} • objetivo neutro`;
  if(target.structure)return target.structure.label||'Estrutura';
  return['Top','Mid','Bot'][target.lane]+' — posição'
 }
