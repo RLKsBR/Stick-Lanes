@@ -1,6 +1,7 @@
-/* Stick Lanes — jungles, quatro buffs e respawn das Lendas v4.
-   Duas jungles, cada uma dividida em duas metades. Qualquer Lenda pode
-   disputar qualquer metade. Não existe mais Cegueira ou ocultação de inimigos. */
+/* Stick Lanes — jungles grandes, quatro buffs independentes e respawn das Lendas v5.
+   As duas áreas entre Top/Mid e Mid/Bot são as jungles inteiras. Cada uma é
+   dividida no meio do trajeto, formando quatro regiões grandes e independentes.
+   Se duas Lendas disputarem a mesma região, elas lutam até uma sair ou morrer. */
 'use strict';
 (function(){
 const map=window.SL_MOBA_SQUARE_V2;
@@ -10,10 +11,12 @@ const CAPTURE_SECONDS=15;
 const ACTIVE_SECONDS=60;
 const RECHARGE_SECONDS=60;
 const AURA_RADIUS=340;
+const REGION_START=.08,REGION_SPLIT=.50,REGION_END=.92;
+const REGION_INNER_A=.16,REGION_INNER_B=.84,REGION_STEPS=18;
 
 const JUNGLES=[
-  {id:'west',label:'JUNGLE OESTE',x:1840,y:3370,w:980,h:1160,a:-.17},
-  {id:'east',label:'JUNGLE LESTE',x:4960,y:3430,w:980,h:1160,a:-.17}
+  {id:'upper',label:'JUNGLE SUPERIOR',laneA:0,laneB:1,t0:REGION_START,t1:REGION_END},
+  {id:'lower',label:'JUNGLE INFERIOR',laneA:1,laneB:2,t0:REGION_START,t1:REGION_END}
 ];
 const BUFF_DEFS={
   buff1:{index:1,name:'Buff 1 — Ímpeto',short:'MOV + ATQ',move:.12,attackSpeed:.10,color:'#65d6ff'},
@@ -21,27 +24,52 @@ const BUFF_DEFS={
   buff3:{index:3,name:'Buff 3 — Regeneração',short:'REGEN',regen:.006,color:'#77e59b'},
   buff4:{index:4,name:'Buff 4 — Comando',short:'DANO + AURA',damage:.08,auraDamage:.10,color:'#d98cff'}
 };
-function rotatedPoint(arena,lx,ly){const c=Math.cos(arena.a),s=Math.sin(arena.a);return{x:arena.x+lx*c-ly*s,y:arena.y+lx*s+ly*c}}
-function makeZone(id,arenaId,half){
-  const arena=JUNGLES.find(a=>a.id===arenaId),p=rotatedPoint(arena,half==='left'?-arena.w*.24:arena.w*.24,0),def=BUFF_DEFS[id];
-  return{id,arenaId,half,x:p.x,y:p.y,r:arena.w*.28,name:def.name,effect:id,index:def.index}
-}
-/* Distribuição alternada para não deixar uma jungle com todos os buffs ofensivos. */
-const ZONES=[
-  makeZone('buff1','west','left'),
-  makeZone('buff4','west','right'),
-  makeZone('buff3','east','left'),
-  makeZone('buff2','east','right')
-];
-function arenaLocal(arena,w){const c=Math.cos(-arena.a),s=Math.sin(-arena.a),dx=w.x-arena.x,dy=w.y-arena.y;return{x:dx*c-dy*s,y:dx*s+dy*c}}
-function insideArena(arena,w){const p=arenaLocal(arena,w),nx=Math.abs(p.x)/(arena.w/2),ny=Math.abs(p.y)/(arena.h/2);return nx<=1&&ny<=1&&nx+ny*.56<=1.18}
-function containsBuff(zone,w){const arena=JUNGLES.find(a=>a.id===zone.arenaId);if(!arena||!insideArena(arena,w))return false;const p=arenaLocal(arena,w);return zone.half==='left'?p.x<=0:p.x>=0}
 
-/* Remove a renderização antiga de Cegueira e substitui os alvos táticos. */
+function mixPoint(a,b,q){return{x:a.x+(b.x-a.x)*q,y:a.y+(b.y-a.y)*q}}
+function buildRegionPolygon(jungle,t0,t1){
+  const points=[];
+  for(let i=0;i<=REGION_STEPS;i++){
+    const t=t0+(t1-t0)*i/REGION_STEPS,a=map.routePoint(jungle.laneA,t),b=map.routePoint(jungle.laneB,t);
+    points.push(mixPoint(a,b,REGION_INNER_A))
+  }
+  for(let i=REGION_STEPS;i>=0;i--){
+    const t=t0+(t1-t0)*i/REGION_STEPS,a=map.routePoint(jungle.laneA,t),b=map.routePoint(jungle.laneB,t);
+    points.push(mixPoint(a,b,REGION_INNER_B))
+  }
+  return points
+}
+function polygonCenter(points){
+  let x=0,y=0;for(const p of points){x+=p.x;y+=p.y}
+  return{x:x/points.length,y:y/points.length}
+}
+function makeZone(id,jungleId,t0,t1){
+  const jungle=JUNGLES.find(j=>j.id===jungleId),polygon=buildRegionPolygon(jungle,t0,t1),center=polygonCenter(polygon),def=BUFF_DEFS[id];
+  return{id,jungleId,t0,t1,polygon,x:center.x,y:center.y,r:0,name:def.name,effect:id,index:def.index}
+}
+/* Cada jungle inteira é dividida em duas metades grandes. Os quatro estados são independentes. */
+const ZONES=[
+  makeZone('buff1','upper',REGION_START,REGION_SPLIT),
+  makeZone('buff4','upper',REGION_SPLIT,REGION_END),
+  makeZone('buff3','lower',REGION_START,REGION_SPLIT),
+  makeZone('buff2','lower',REGION_SPLIT,REGION_END)
+];
+function pointInPolygon(point,polygon){
+  let inside=false;
+  for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+    const a=polygon[i],b=polygon[j],cross=((a.y>point.y)!==(b.y>point.y))&&point.x<(b.x-a.x)*(point.y-a.y)/((b.y-a.y)||1e-9)+a.x;
+    if(cross)inside=!inside
+  }
+  return inside
+}
+function containsBuff(zone,w){return!!zone&&!!w&&pointInPolygon(w,zone.polygon)}
+function insideJungle(jungleId,w){return ZONES.some(zone=>zone.jungleId===jungleId&&containsBuff(zone,w))}
+
+/* O renderer antigo tinha duas arenas pequenas. Esvaziamos as referências dele
+   e publicamos as quatro regiões grandes como os únicos alvos de buff. */
 if(Array.isArray(map.buffArenas))map.buffArenas.splice(0);
 if(Array.isArray(map.buffZones))map.buffZones.splice(0,map.buffZones.length,...ZONES);
 map.containsBuff=containsBuff;
-map.insideBuffArena=(arenaId,w)=>{const arena=JUNGLES.find(a=>a.id===arenaId);return!!arena&&insideArena(arena,w)};
+map.insideBuffArena=insideJungle;
 
 const states=new Map(ZONES.map(zone=>[zone.id,{progress:0,capturingSide:0,owner:0,activeUntil:0,readyAt:0,contested:false}]));
 let nextAiThink={1:28,'-1':28};
@@ -76,9 +104,10 @@ function updateCapture(zone,dt,t){
   if(s.owner&&t>=s.activeUntil)s.owner=0;
   if(!canCapture(zone,t)){s.progress=0;s.capturingSide=0;s.contested=false;clearUnavailableAssignments(zone);return}
   const inside=legendsInside(zone),capturers=inside.filter(l=>l.manualBuff===zone.id);
-  if(capturers.length!==1||inside.some(l=>l.side!==capturers[0]?.side)){
-    s.contested=inside.length>1;s.progress=0;s.capturingSide=0;return
+  if(inside.length>1){
+    s.contested=true;s.progress=0;s.capturingSide=0;return
   }
+  if(capturers.length!==1){s.contested=false;s.progress=0;s.capturingSide=0;return}
   const legend=capturers[0];s.contested=false;
   if(s.capturingSide!==legend.side){s.capturingSide=legend.side;s.progress=0}
   s.progress=Math.min(CAPTURE_SECONDS,s.progress+dt);
@@ -98,7 +127,7 @@ function updateBuffs(dt,t){for(const zone of ZONES)updateCapture(zone,dt,t);runB
 function resetBuffs(){for(const s of states.values()){s.progress=0;s.capturingSide=0;s.owner=0;s.activeUntil=0;s.readyAt=0;s.contested=false}nextAiThink={1:28,'-1':28}}
 function zoneState(id,t=simTime){
   const s=stateFor(id);if(!s)return null;let label='DISPONÍVEL';
-  if(s.contested)label='CONTESTADO';
+  if(s.contested)label='EM COMBATE';
   else if(s.capturingSide)label=`${sideName(s.capturingSide)} ${Math.max(0,CAPTURE_SECONDS-s.progress).toFixed(1)}s`;
   else if(s.owner&&t<s.activeUntil)label=`${sideName(s.owner)} ${Math.ceil(s.activeUntil-t)}s`;
   else if(t<s.readyAt)label=`RECARGA ${Math.ceil(s.readyAt-t)}s`;
@@ -126,31 +155,47 @@ attackStructure=function(attacker,structure,t){
   const mult=totalDamageMultiplier(attacker,t);if(mult===1)return previousAttackStructure(attacker,structure,t);
   const base=attacker.atk;attacker.atk=base*mult;try{return previousAttackStructure(attacker,structure,t)}finally{attacker.atk=base}
 };
+
+/* Lenda estacionada numa região de jungle continua em coordenadas do mundo.
+   Se a Lenda inimiga entrar na mesma região, ambas se aproximam e atacam
+   usando o ataque real do jogo — incluindo as habilidades/passivas das Lendas. */
+function jungleLegendControl(unit,dt,t){
+  if(!unit?.special?.legend||!unit.tacticalWorld||unit.tacticalDestination||!unit.manualBuff)return false;
+  const zone=ZONES.find(z=>z.id===unit.manualBuff);
+  if(!zone||!containsBuff(zone,worldOf(unit))){returnLegendToLane(unit);return true}
+  const enemy=livingLegend(-unit.side);
+  if(!enemy||!containsBuff(zone,worldOf(enemy)))return true;
+  const a=worldOf(unit),b=worldOf(enemy),dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),routeScale=map.routeLengths[1]/(BASE_X[-1]-BASE_X[1]),range=Math.max(32,unit.range*PX*routeScale);
+  if(d>range){
+    const speed=Math.max(55,unit.speed*MOVE_SCALE*(window.SL_MOVEMENT_V6?.multiplier||1)*routeScale)*(1+moveBonus(unit.side,t)),step=Math.min(Math.max(0,d-range*.82),speed*dt);
+    if(step>0){unit.tacticalWorld.x+=dx/d*step;unit.tacticalWorld.y+=dy/d*step;unit.tacticalWorld.a=Math.atan2(dy,dx);unit.lastMoved=t}
+    return true
+  }
+  if(t-unit.lastAttack>=attackRate(unit)){attack(unit,enemy,t);unit.lastAttack=t;unit.attackCount++}
+  return true
+}
 if(window.SL_TACTICAL_TARGETING?.handleUnit){
   const previousHandleUnit=window.SL_TACTICAL_TARGETING.handleUnit;
   window.SL_TACTICAL_TARGETING.handleUnit=function(unit,dt,t){
+    if(jungleLegendControl(unit,dt,t))return true;
     const mult=unit.tacticalWorld?1+moveBonus(unit.side,t):1;if(mult===1)return previousHandleUnit(unit,dt,t);
     const base=unit.speed;unit.speed=base*mult;try{return previousHandleUnit(unit,dt,t)}finally{unit.speed=base}
   }
 }
 function applyRegeneration(dt,t){for(const unit of units){if(unit.dead)continue;const rate=regenRate(unit.side,t);if(rate>0&&unit.hp<unit.maxHp)unit.hp=Math.min(unit.maxHp,unit.hp+unit.maxHp*rate*dt)}}
 
-/* O moba-square chama drawWorldBarrier ainda dentro da transformação do mundo,
-   antes de estruturas e unidades. Usamos esse gancho apenas para desenhar as jungles. */
-function arenaPath(arena){const w=arena.w/2,h=arena.h/2,c=110;ctx.beginPath();ctx.moveTo(-w+c,-h);ctx.lineTo(w-c,-h);ctx.lineTo(w,-h+c);ctx.lineTo(w,h-c);ctx.lineTo(w-c,h);ctx.lineTo(-w+c,h);ctx.lineTo(-w,h-c);ctx.lineTo(-w,-h+c);ctx.closePath()}
+/* Quatro regiões grandes: nada de círculo minúsculo no centro da jungle. */
+function polygonPath(points){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath()}
 function drawWorldBarrier(t){
-  for(const arena of JUNGLES){
-    ctx.save();ctx.translate(arena.x,arena.y);ctx.rotate(arena.a);ctx.fillStyle='rgba(4,8,12,.78)';arenaPath(arena);ctx.fill();ctx.strokeStyle='rgba(205,220,224,.34)';ctx.lineWidth=14;ctx.stroke();
-    ctx.strokeStyle='rgba(226,237,238,.32)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-arena.h/2+62);ctx.lineTo(0,arena.h/2-62);ctx.stroke();
-    ctx.textAlign='center';ctx.fillStyle='#edf2ef';ctx.font='900 30px system-ui';ctx.fillText(arena.label,0,-arena.h/2+52);
-    for(const half of ['left','right']){
-      const zone=ZONES.find(z=>z.arenaId===arena.id&&z.half===half),def=BUFF_DEFS[zone.id],s=zoneState(zone.id,t),lx=half==='left'?-arena.w*.25:arena.w*.25,owner=s.owner&&t<s.activeUntil?s.owner:0;
-      ctx.save();ctx.translate(lx,16);ctx.globalAlpha=.10;ctx.fillStyle=def.color;ctx.fillRect(-arena.w*.23,-arena.h*.38,arena.w*.46,arena.h*.76);ctx.globalAlpha=1;
-      ctx.strokeStyle=owner?sideColor(owner):def.color;ctx.lineWidth=8;ctx.beginPath();ctx.arc(0,0,122,0,Math.PI*2);ctx.stroke();
-      if(s.capturingSide){ctx.strokeStyle=sideColor(s.capturingSide);ctx.lineWidth=9;ctx.beginPath();ctx.arc(0,0,101,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,s.progress/CAPTURE_SECONDS));ctx.stroke()}
-      ctx.fillStyle=def.color;ctx.font='1000 42px system-ui';ctx.fillText(`B${def.index}`,0,-10);ctx.fillStyle='#f4f0e7';ctx.font='800 18px system-ui';ctx.fillText(def.short,0,24);ctx.fillStyle=owner?sideColor(owner):'#b9c4c7';ctx.font='800 15px system-ui';ctx.fillText(s.label,0,50);ctx.restore()
-    }
-    ctx.restore()
+  for(const zone of ZONES){
+    const def=BUFF_DEFS[zone.id],s=zoneState(zone.id,t),owner=s.owner&&t<s.activeUntil?s.owner:0,pulse=.075+Math.sin(t*1.25+def.index)*.012;
+    ctx.save();polygonPath(zone.polygon);ctx.fillStyle=def.color;ctx.globalAlpha=pulse;ctx.fill();ctx.globalAlpha=owner?.34:.28;ctx.strokeStyle=owner?sideColor(owner):def.color;ctx.lineWidth=8;ctx.stroke();ctx.globalAlpha=1;
+    ctx.save();ctx.translate(zone.x,zone.y);ctx.textAlign='center';
+    ctx.fillStyle='rgba(4,8,12,.78)';ctx.beginPath();ctx.roundRect(-145,-56,290,112,22);ctx.fill();ctx.strokeStyle=owner?sideColor(owner):def.color;ctx.lineWidth=4;ctx.stroke();
+    ctx.fillStyle=def.color;ctx.font='1000 38px system-ui';ctx.fillText(`B${def.index}`,0,-14);ctx.fillStyle='#f4f0e7';ctx.font='800 17px system-ui';ctx.fillText(def.short,0,13);
+    ctx.fillStyle=owner?sideColor(owner):'#c8d1d3';ctx.font='800 14px system-ui';ctx.fillText(s.label,0,38);
+    if(s.capturingSide){ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(-108,48,216,8);ctx.fillStyle=sideColor(s.capturingSide);ctx.fillRect(-108,48,216*Math.min(1,s.progress/CAPTURE_SECONDS),8)}
+    ctx.restore();ctx.restore()
   }
 }
 function drawScreenBarrier(){}
@@ -179,7 +224,7 @@ reset=function(){pending[1]=pending[-1]=null;resetBuffs();return previousReset()
 window.SL_BUFF_SYSTEM={
   captureSeconds:CAPTURE_SECONDS,activeSeconds:ACTIVE_SECONDS,rechargeAfterActive:RECHARGE_SECONDS,
   zones:ZONES,jungles:JUNGLES,defs:BUFF_DEFS,isBlinded,hideEnemy,hasBuff,canCapture,zoneState,updateBuffs,reset:resetBuffs,
-  travelToZone,containsBuff,attackSpeedBonus,moveBonus,damageBonus,regenRate,troopNearLegend,
+  travelToZone,containsBuff,attackSpeedBonus,moveBonus,damageBonus,regenRate,troopNearLegend,jungleLegendControl,
   drawWorldBarrier,drawScreenBarrier,get blindedUntil(){return{...blindedUntil}}
 };
 window.SL_LEGEND_RESPAWN={base:RESPAWN_BASE,perLevel:RESPAWN_PER_LEVEL,respawnSeconds,getPending:side=>pending[side]?{...pending[side]}:null};
