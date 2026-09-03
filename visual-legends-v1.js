@@ -16,25 +16,52 @@ function teamGround(u,t,wide=43){
  ctx.save();ctx.scale(pulse,1);ctx.strokeStyle=team.primary;ctx.lineWidth=5;ctx.globalAlpha=.88;ctx.beginPath();ctx.ellipse(0,45,wide,12,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.32;ctx.fillStyle=team.primary;ctx.fill();ctx.restore()
 }
 function drawNefal(u,t,p){
- const dir=u.side,step=movingPulse(u,t),cast=attackPulse(u,t),float=Math.sin(t*1.7+u.anim)*3,reach=cast*29;
+ const dir=u.side,step=movingPulse(u,t),cast=attackPulse(u,t),float=Math.sin(t*1.45+u.anim)*2.6;
  ctx.save();ctx.translate(0,float);
- /* Ecos corporais deslocados: refração material, não aura genérica. */
- for(const echo of [-1,1]){ctx.save();ctx.globalAlpha=.10+cast*.08;ctx.translate(echo*(7+cast*7),-2);ctx.strokeStyle=echo<0?p[2]:p[4];ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-66);ctx.lineTo(echo*7,-13);ctx.lineTo(echo*5,20);ctx.stroke();ctx.restore()}
- /* Pernas muito longas e articulação inumana, com peso alternado. */
- for(const side of [-1,1]){const phase=step*side,kneeX=side*(12+phase*5),footX=side*(20+phase*10);line(side*6,8,kneeX,34,p[0],9);line(kneeX,34,footX,58,p[1],6);ellipse(footX+side*6,59,13,3.4,'#070611',p[2],1.2)}
- /* Coluna fina exposta e tórax translúcido em costelas assimétricas. */
- const torso=ctx.createLinearGradient(-18,-68,18,16);torso.addColorStop(0,p[3]);torso.addColorStop(.18,p[4]);torso.addColorStop(.48,p[1]);torso.addColorStop(.78,p[2]);torso.addColorStop(1,p[0]);ctx.fillStyle=torso;ctx.strokeStyle=p[3];ctx.lineWidth=1.7;
- ctx.beginPath();ctx.moveTo(-8,10);ctx.quadraticCurveTo(-13,-12,-18,-39);ctx.quadraticCurveTo(-13,-62,0,-69);ctx.quadraticCurveTo(17,-59,16,-37);ctx.quadraticCurveTo(10,-8,8,10);ctx.quadraticCurveTo(0,20,-8,10);ctx.fill();ctx.stroke();
- ctx.strokeStyle='rgba(111,255,224,.65)';ctx.lineWidth=2;for(let i=0;i<5;i++){const y=-50+i*11,w=16-i*1.4;ctx.beginPath();ctx.moveTo(-w,y);ctx.quadraticCurveTo(0,y+8,w,y-2);ctx.stroke()}
- line(0,-56,0,7,'rgba(241,216,255,.7)',2);ellipse(0,-18,4,8,'#080817',p[2],1.5);
- /* Braços alcançam quase os joelhos; durante a magia, o gesto se multiplica. */
- for(const side of [-1,1]){const casting=side===dir?reach:0,elbowX=side*(30+casting*.35),handX=side*(44+casting);line(side*12,-48,elbowX,-17+phaseFor(side,step),p[0],7);line(elbowX,-17+phaseFor(side,step),handX,22-cast*18,p[1],4.5);for(let f=-1;f<=1;f++)line(handX,22-cast*18,handX+side*(11+f*2),22-cast*18+f*6,p[3],1.25)}
- /* Crânio alto, bifurcado e completamente sem face. */
- ctx.fillStyle=torso;ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-111);ctx.quadraticCurveTo(-21,-100,-18,-81);ctx.quadraticCurveTo(-15,-67,0,-63);ctx.quadraticCurveTo(17,-69,19,-83);ctx.quadraticCurveTo(20,-101,0,-111);ctx.fill();ctx.stroke();
- ctx.fillStyle='rgba(5,5,14,.72)';ctx.beginPath();ctx.moveTo(0,-106);ctx.quadraticCurveTo(-5,-91,0,-67);ctx.quadraticCurveTo(6,-91,0,-106);ctx.fill();
- /* Fragmentos sólidos de espaço acompanham a cabeça em órbitas quebradas. */
- for(let i=0;i<6;i++){const a=t*.31+i*Math.PI/3,x=Math.cos(a)*(28+(i%2)*8),y=-84+Math.sin(a)*15;ctx.save();ctx.translate(x,y);ctx.rotate(a+t*.2);ctx.fillStyle=i%3===0?p[4]:i%2?p[2]:p[3];ctx.beginPath();ctx.moveTo(-6,-2);ctx.lineTo(1,-6);ctx.lineTo(7,1);ctx.lineTo(-2,4);ctx.closePath();ctx.fill();ctx.restore()}
- if(cast){ctx.globalAlpha=.45+cast*.4;ctx.strokeStyle=p[2];ctx.lineWidth=2.5;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(dir*(44+i*7),5-i*5);ctx.quadraticCurveTo(dir*(67+i*10),-28,dir*(88+i*12),-8+i*5);ctx.stroke()}ctx.globalAlpha=1}
+ const shell=metal(p,-28,-108,32,34);
+
+ /* Anel psíquico traseiro: assinatura principal da lenda. */
+ ctx.save();ctx.globalAlpha=.62;ctx.strokeStyle=p[2];ctx.lineWidth=4.2;ctx.beginPath();ctx.ellipse(0,-70,34+cast*4,13+cast*2,0,0,Math.PI*2);ctx.stroke();
+ if(cast){ctx.globalAlpha=.28+cast*.24;ctx.strokeStyle=p[4];ctx.lineWidth=2.2;ctx.beginPath();ctx.ellipse(0,-70,45+cast*7,18+cast*3,0,0,Math.PI*2);ctx.stroke()}
+ ctx.restore();
+
+ /* Quatro placas orbitais limpas substituem a órbita caótica anterior. */
+ for(let i=0;i<4;i++){
+   const a=t*.42+u.anim*.3+i*Math.PI/2,x=Math.cos(a)*(22+(i%2)*8),y=-70+Math.sin(a)*11;
+   ctx.save();ctx.translate(x,y);ctx.rotate(a+t*.12);ctx.fillStyle=i%2?p[1]:p[3];ctx.globalAlpha=.86;ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(0,-5);ctx.lineTo(8,0);ctx.lineTo(0,5);ctx.closePath();ctx.fill();ctx.restore()
+ }
+
+ /* Pernas longas, finas e controladas: alienígena na silhueta, Mentalista no material. */
+ for(const side of [-1,1]){
+   const kneeX=side*(10+step*side*4),footX=side*(15+step*side*8);
+   line(side*5,8,kneeX,35,p[0],6.5);line(kneeX,35,footX,58,p[1],4.2);ellipse(footX+side*4,59,10,2.8,'#080913',p[2],1)
+ }
+
+ /* Tronco estreito de metal psíquico vivo, sem anatomia grotesca exposta. */
+ ctx.fillStyle=shell;ctx.strokeStyle=p[3];ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-8,10);ctx.quadraticCurveTo(-14,-10,-16,-38);ctx.quadraticCurveTo(-13,-60,0,-68);ctx.quadraticCurveTo(14,-60,16,-38);ctx.quadraticCurveTo(13,-10,8,10);ctx.quadraticCurveTo(0,18,-8,10);ctx.fill();ctx.stroke();
+ ctx.strokeStyle='rgba(111,255,224,.58)';ctx.lineWidth=1.6;
+ for(let i=0;i<4;i++){const y=-49+i*13;ctx.beginPath();ctx.moveTo(-9+i*.8,y);ctx.quadraticCurveTo(0,y+6,9-i*.8,y);ctx.stroke()}
+ ellipse(0,-19,4.5,7,'#090a16',p[2],1.2);line(0,-56,0,8,'rgba(241,216,255,.55)',1.7);
+
+ /* Braços alongados e gestos mínimos: poder sem esforço aparente. */
+ for(const side of [-1,1]){
+   const lift=side===dir?cast*14:cast*4,elbowX=side*(24+lift*.3),handX=side*(35+lift),handY=8-cast*17+(side===dir?-2:2);
+   line(side*10,-45,elbowX,-19+step*side*2,p[0],5.8);line(elbowX,-19+step*side*2,handX,handY,p[1],3.8);
+   for(let f=-1;f<=1;f++)line(handX,handY,handX+side*(8+f*1.5),handY+f*5,p[3],1.1)
+ }
+
+ /* Cabeça oval, lisa e absolutamente sem rosto. */
+ ctx.fillStyle=shell;ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-110);ctx.quadraticCurveTo(-18,-102,-17,-82);ctx.quadraticCurveTo(-15,-66,0,-62);ctx.quadraticCurveTo(15,-66,17,-82);ctx.quadraticCurveTo(18,-102,0,-110);ctx.fill();ctx.stroke();
+ /* Friso material central: detalhe de superfície, nunca feição facial. */
+ ctx.fillStyle='rgba(7,7,18,.42)';ctx.beginPath();ctx.moveTo(0,-104);ctx.quadraticCurveTo(-4,-90,0,-68);ctx.quadraticCurveTo(4,-90,0,-104);ctx.fill();
+
+ /* Cast comprime espaço em linhas limpas e ativa o brilho interno. */
+ if(cast){
+   ctx.save();ctx.globalAlpha=.38+cast*.28;ctx.strokeStyle=p[2];ctx.lineWidth=2.2;
+   for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(dir*(37+i*5),4-i*5);ctx.quadraticCurveTo(dir*(57+i*10),-25,dir*(82+i*11),-8+i*6);ctx.stroke()}
+   ctx.restore();
+   ctx.save();ctx.globalAlpha=.16+cast*.12;const g=ctx.createRadialGradient(0,-24,4,0,-24,36);g.addColorStop(0,p[4]);g.addColorStop(.5,p[1]);g.addColorStop(1,'rgba(30,20,55,0)');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(0,-20,24+cast*7,34+cast*10,0,0,Math.PI*2);ctx.fill();ctx.restore()
+ }
  ctx.restore()
 }
 function phaseFor(side,step){return step*side*3}
