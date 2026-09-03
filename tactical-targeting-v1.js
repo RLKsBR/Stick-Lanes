@@ -3,7 +3,7 @@
    recebem a mesma ordem. Cliques em inimigos focam o alvo; chão move o grupo. */
 'use strict';
 (function(){
-const PLAYER=1,LANE_HIT_RADIUS=285,STRUCTURE_HIT_RADIUS=125,UNIT_HIT_RADIUS=105,LEGEND_HIT_RADIUS=145;
+const PLAYER=1,LANE_HIT_RADIUS=285,STRUCTURE_HIT_RADIUS=125,STRUCTURE_CORE_RADIUS=72,UNIT_HIT_RADIUS=105,LEGEND_HIT_RADIUS=145;
 const map=window.SL_MOBA_SQUARE_V2;
 if(!map)return;
 let activeMarker=null,quickBar=null;
@@ -18,7 +18,11 @@ function targetWorld(target){
  if(target?.structure){const s=structures.find(x=>!x.dead&&x.id===target.structure.id);if(s)return map.structurePos(s)}
  return target?.world||null
 }
-function targetInJungle(target){const w=targetWorld(target);return target?.kind==='buff'||!!(w&&zoneAt(w))}
+function targetInJungle(target){
+ if(target?.kind==='buff')return true;
+ if(target?.kind!=='unit')return false;
+ const w=targetWorld(target);return!!(w&&zoneAt(w))
+}
 function buffReady(target){return target.kind!=='buff'||!window.SL_BUFF_SYSTEM?.canCapture||window.SL_BUFF_SYSTEM.canCapture(target.buff,simTime)}
 function clearManual(u){delete u.manualTargetId;delete u.manualUnitTargetId;delete u.manualHold;delete u.tacticalDestination;delete u.manualBuff}
 function liveTargetSnapshot(target){
@@ -63,13 +67,15 @@ function closestEnemyUnit(world){
  for(const u of units){if(u.dead||u.side===PLAYER)continue;const p=map.unitPos(u),d=Math.hypot(p.x-world.x,p.y-world.y),limit=u.special?.legend?LEGEND_HIT_RADIUS:UNIT_HIT_RADIUS;if(d<=limit&&d<distance){best=u;distance=d}}
  return best?{unit:best,distance}:null
 }
+function structureTarget(hit){const s=hit.structure,t=(s.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]);return{kind:'structure',structure:s,lane:s.lane,x:s.x,t,world:map.structurePos(s)}}
 function clickedTarget(world){
- /* Unidade vem antes da região: clicar numa Lenda inimiga dentro da jungle ainda
-    significa focar a Lenda, porém apenas a nossa Lenda pode entrar lá. */
- const unitHit=closestEnemyUnit(world);
+ const structureHit=closestStructure(world),unitHit=closestEnemyUnit(world);
+ /* O miolo da torre ganha prioridade. Fora dele, uma unidade visivelmente clicada
+    pode ser focada mesmo estando próxima à estrutura. */
+ if(structureHit&&structureHit.distance<=STRUCTURE_CORE_RADIUS)return structureTarget(structureHit);
  if(unitHit){const u=unitHit.unit,p=map.unitPos(u);return{kind:'unit',unitId:u.id,lane:u.lane,x:u.x,world:{x:p.x,y:p.y}}}
+ if(structureHit)return structureTarget(structureHit);
  const buff=zoneAt(world);if(buff)return{kind:'buff',buff,world:{x:buff.x,y:buff.y},lane:null,x:null};
- const hit=closestStructure(world);if(hit){const s=hit.structure,t=(s.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]);return{kind:'structure',structure:s,lane:s.lane,x:s.x,t,world:map.structurePos(s)}}
  const route=map.nearestRoutePoint(world);if(route.distance<=LANE_HIT_RADIUS){const x=BASE_X[1]+route.t*(BASE_X[-1]-BASE_X[1]);return{kind:'point',lane:route.lane,x,t:route.t,world:route.point}}
  return null
 }
