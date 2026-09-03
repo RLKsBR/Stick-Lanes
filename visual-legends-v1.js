@@ -19,43 +19,28 @@ function drawNefal(u,t,p){
  const dir=u.side,step=movingPulse(u,t),cast=attackPulse(u,t),float=Math.sin(t*1.45+u.anim)*2.6;
  ctx.save();ctx.translate(0,float);
  const shell=metal(p,-28,-108,32,34);
-
- /* Anel psíquico traseiro: assinatura principal da lenda. */
  ctx.save();ctx.globalAlpha=.62;ctx.strokeStyle=p[2];ctx.lineWidth=4.2;ctx.beginPath();ctx.ellipse(0,-70,34+cast*4,13+cast*2,0,0,Math.PI*2);ctx.stroke();
  if(cast){ctx.globalAlpha=.28+cast*.24;ctx.strokeStyle=p[4];ctx.lineWidth=2.2;ctx.beginPath();ctx.ellipse(0,-70,45+cast*7,18+cast*3,0,0,Math.PI*2);ctx.stroke()}
  ctx.restore();
-
- /* Quatro placas orbitais limpas substituem a órbita caótica anterior. */
  for(let i=0;i<4;i++){
    const a=t*.42+u.anim*.3+i*Math.PI/2,x=Math.cos(a)*(22+(i%2)*8),y=-70+Math.sin(a)*11;
    ctx.save();ctx.translate(x,y);ctx.rotate(a+t*.12);ctx.fillStyle=i%2?p[1]:p[3];ctx.globalAlpha=.86;ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(0,-5);ctx.lineTo(8,0);ctx.lineTo(0,5);ctx.closePath();ctx.fill();ctx.restore()
  }
-
- /* Pernas longas, finas e controladas: alienígena na silhueta, Mentalista no material. */
  for(const side of [-1,1]){
    const kneeX=side*(10+step*side*4),footX=side*(15+step*side*8);
    line(side*5,8,kneeX,35,p[0],6.5);line(kneeX,35,footX,58,p[1],4.2);ellipse(footX+side*4,59,10,2.8,'#080913',p[2],1)
  }
-
- /* Tronco estreito de metal psíquico vivo, sem anatomia grotesca exposta. */
  ctx.fillStyle=shell;ctx.strokeStyle=p[3];ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-8,10);ctx.quadraticCurveTo(-14,-10,-16,-38);ctx.quadraticCurveTo(-13,-60,0,-68);ctx.quadraticCurveTo(14,-60,16,-38);ctx.quadraticCurveTo(13,-10,8,10);ctx.quadraticCurveTo(0,18,-8,10);ctx.fill();ctx.stroke();
  ctx.strokeStyle='rgba(111,255,224,.58)';ctx.lineWidth=1.6;
  for(let i=0;i<4;i++){const y=-49+i*13;ctx.beginPath();ctx.moveTo(-9+i*.8,y);ctx.quadraticCurveTo(0,y+6,9-i*.8,y);ctx.stroke()}
  ellipse(0,-19,4.5,7,'#090a16',p[2],1.2);line(0,-56,0,8,'rgba(241,216,255,.55)',1.7);
-
- /* Braços alongados e gestos mínimos: poder sem esforço aparente. */
  for(const side of [-1,1]){
    const lift=side===dir?cast*14:cast*4,elbowX=side*(24+lift*.3),handX=side*(35+lift),handY=8-cast*17+(side===dir?-2:2);
    line(side*10,-45,elbowX,-19+step*side*2,p[0],5.8);line(elbowX,-19+step*side*2,handX,handY,p[1],3.8);
    for(let f=-1;f<=1;f++)line(handX,handY,handX+side*(8+f*1.5),handY+f*5,p[3],1.1)
  }
-
- /* Cabeça oval, lisa e absolutamente sem rosto. */
  ctx.fillStyle=shell;ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-110);ctx.quadraticCurveTo(-18,-102,-17,-82);ctx.quadraticCurveTo(-15,-66,0,-62);ctx.quadraticCurveTo(15,-66,17,-82);ctx.quadraticCurveTo(18,-102,0,-110);ctx.fill();ctx.stroke();
- /* Friso material central: detalhe de superfície, nunca feição facial. */
  ctx.fillStyle='rgba(7,7,18,.42)';ctx.beginPath();ctx.moveTo(0,-104);ctx.quadraticCurveTo(-4,-90,0,-68);ctx.quadraticCurveTo(4,-90,0,-104);ctx.fill();
-
- /* Cast comprime espaço em linhas limpas e ativa o brilho interno. */
  if(cast){
    ctx.save();ctx.globalAlpha=.38+cast*.28;ctx.strokeStyle=p[2];ctx.lineWidth=2.2;
    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(dir*(37+i*5),4-i*5);ctx.quadraticCurveTo(dir*(57+i*10),-25,dir*(82+i*11),-8+i*6);ctx.stroke()}
@@ -64,45 +49,69 @@ function drawNefal(u,t,p){
  }
  ctx.restore()
 }
-function phaseFor(side,step){return step*side*3}
 
 function crabLeg(side,index,phase,p){
- const y=-9+index*13,rootX=side*18,kneeX=side*(39+index*3),footX=side*(56+phase*7);
- line(rootX,y,kneeX,y+phase*4,p[0],8);line(kneeX,y+phase*4,footX,y+17,p[1],6);ellipse(footX,y+19,9,3,'#0b1417',p[2],1)
+ const y=-5+index*12,rootX=side*20,kneeX=side*(40+index*3),footX=side*(58+phase*7),lift=(index%2?1:-1)*phase*3;
+ line(rootX,y,kneeX,y+lift,p[0],9);line(kneeX,y+lift,footX,y+17,p[1],6.5);ellipse(footX+side*4,y+19,11,3.2,'#091214',p[2],1.2)
 }
 function drawKarkinos(u,t,p){
- const dir=u.side,step=movingPulse(u,t),strike=attackPulse(u,t);
- /* Oito patas funcionais em passada lateral alternada. */
- for(const side of [-1,1])for(let i=0;i<4;i++)crabLeg(side,i,Math.sin(t*8+u.anim+i*Math.PI+side)*(.45+Math.abs(step)),p);
- /* Abdômen baixo e carapaça em placas. */
- ellipse(0,9,46,31,'#071419');
- ctx.fillStyle=metal(p,-38,-35,38,25);ctx.strokeStyle=p[2];ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-43,9);ctx.quadraticCurveTo(-38,-30,0,-37);ctx.quadraticCurveTo(39,-30,45,8);ctx.lineTo(32,28);ctx.lineTo(-31,28);ctx.closePath();ctx.fill();ctx.stroke();
- ctx.strokeStyle='rgba(229,255,244,.34)';ctx.lineWidth=2;for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*13,-29+Math.abs(i)*3);ctx.lineTo(i*15,23);ctx.stroke()}
- ellipse(-13,-16,5,8,'#102d35',p[2],1.5);ellipse(13,-16,5,8,'#102d35',p[2],1.5);
- line(-14,-22,-18,-34,p[1],3);line(14,-22,18,-34,p[1],3);ellipse(-19,-36,4,4,p[3]);ellipse(19,-36,4,4,p[3]);
- /* Pinça demolidora à frente e pinça estabilizadora atrás. */
- const front=dir*(59+strike*17),back=-dir*50;
- line(dir*31,-3,dir*49,-12,p[0],13);ellipse(front,-15,24+strike*5,18,metal(p),p[3],2.5);
- ctx.fillStyle='#071419';ctx.beginPath();ctx.moveTo(front-dir*3,-16);ctx.lineTo(front+dir*24,-31);ctx.lineTo(front+dir*12,-8);ctx.closePath();ctx.fill();
- line(-dir*29,3,-dir*43,0,p[0],10);ellipse(back,-2,15,12,p[1],p[2],2);
- if(strike){ctx.strokeStyle=p[2];ctx.lineWidth=3;ctx.globalAlpha=strike*.75;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(front+dir*20,-13,14+i*11,-1.1,1.1);ctx.stroke()}ctx.globalAlpha=1}
+ const dir=u.side,step=movingPulse(u,t),strike=attackPulse(u,t),level=u.legendLevel||1;
+ const bodyMax=u.karkinosBodyMaxHp||Math.max(1,u.maxHp/(1+(u.special?.shellPct||.30))),shellMax=u.karkinosShellMax||bodyMax*(u.special?.shellPct||.30),shellHp=Math.max(0,u.hp-bodyMax),shellRatio=Math.max(0,Math.min(1,shellHp/Math.max(1,shellMax)));
+ const pinchReady=!u.karkinosPinchReadyAt||t>=u.karkinosPinchReadyAt,reflect=level>=12;
+ for(const side of [-1,1])for(let i=0;i<4;i++)crabLeg(side,i,Math.sin(t*7.2+u.anim+i*Math.PI+side)*(.42+Math.abs(step)),p);
+ ellipse(0,12,50,30,'#071419');
+ const armor=metal(p,-52,-48,48,28);
+ ctx.fillStyle=armor;ctx.strokeStyle=shellRatio>0?p[2]:'#3c5e63';ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(-49,8);ctx.quadraticCurveTo(-46,-34,-19,-45);ctx.quadraticCurveTo(0,-53,20,-45);ctx.quadraticCurveTo(48,-34,51,8);ctx.lineTo(35,30);ctx.lineTo(-35,30);ctx.closePath();ctx.fill();ctx.stroke();
+ /* placas sobrepostas deixam a carapaça legível e mostram desgaste */
+ ctx.strokeStyle=shellRatio>.35?'rgba(229,255,244,.48)':'rgba(105,142,145,.45)';ctx.lineWidth=2.2;
+ for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*15,-37+Math.abs(i)*3);ctx.quadraticCurveTo(i*17,-7,i*16,23);ctx.stroke()}
+ ctx.beginPath();ctx.moveTo(-39,-7);ctx.quadraticCurveTo(0,7,39,-7);ctx.stroke();
+ if(shellRatio>0){ctx.save();ctx.globalAlpha=.18+.28*shellRatio;ctx.strokeStyle=p[2];ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,-7,52,39,0,0,Math.PI*2);ctx.stroke();ctx.restore()}
+ if(shellRatio<.45){ctx.strokeStyle='#071012';ctx.lineWidth=3;for(const s of [-1,1]){ctx.beginPath();ctx.moveTo(s*10,-38);ctx.lineTo(s*18,-20);ctx.lineTo(s*9,-8);ctx.lineTo(s*22,7);ctx.stroke()}}
+ /* olhos pequenos e baixos: o volume principal continua sendo a carapaça */
+ line(-16,-28,-20,-40,p[1],3);line(16,-28,20,-40,p[1],3);ellipse(-21,-42,4.2,4.2,p[3]);ellipse(21,-42,4.2,4.2,p[3]);
+ /* pinça principal: grande, aberta quando pronta e fechando no ataque */
+ const frontRoot=dir*31,frontX=dir*(62+strike*12),jaw=pinchReady?15-strike*10:8;
+ line(frontRoot,-5,dir*49,-15,p[0],14);ellipse(frontX,-16,25+strike*3,18,armor,pinchReady?p[3]:p[2],2.6);
+ ctx.fillStyle='#061014';ctx.beginPath();ctx.moveTo(frontX-dir*2,-16);ctx.lineTo(frontX+dir*26,-16-jaw);ctx.lineTo(frontX+dir*11,-5);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(frontX-dir*2,-14);ctx.lineTo(frontX+dir*26,-14+jaw);ctx.lineTo(frontX+dir*11,-25);ctx.closePath();ctx.fill();
+ if(pinchReady){ctx.save();ctx.globalAlpha=.55+.25*Math.sin(t*5);ctx.strokeStyle=p[3];ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(frontX,-16,29,-1.1,1.1);ctx.stroke();ctx.restore()}
+ /* pinça secundária compacta, feita para estabilizar e segurar a linha */
+ const back=-dir*51;line(-dir*30,3,-dir*43,1,p[0],10);ellipse(back,-1,16,12,p[1],p[2],2);ctx.fillStyle='#061014';ctx.beginPath();ctx.moveTo(back-dir*2,-1);ctx.lineTo(back-dir*17,-9);ctx.lineTo(back-dir*8,1);ctx.lineTo(back-dir*17,8);ctx.closePath();ctx.fill();
+ if(reflect){ctx.save();ctx.globalAlpha=.34+.18*Math.sin(t*4);ctx.strokeStyle='#d9fff7';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(0,-5,57+i*7,t*.45+i*.8,t*.45+i*.8+1.55);ctx.stroke()}ctx.restore()}
+ if(strike){ctx.strokeStyle=p[2];ctx.lineWidth=3;ctx.globalAlpha=strike*.78;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(frontX+dir*20,-15,14+i*11,-1.1,1.1);ctx.stroke()}ctx.globalAlpha=1}
 }
 
 function drawVesper(u,t,p){
- const dir=u.side,step=movingPulse(u,t),strike=attackPulse(u,t),points=[];
- /* Corpo segmentado: cada elo acompanha a onda, sem deslize rígido. */
- for(let i=0;i<10;i++){let x=-dir*(i*10-25),y=8+Math.sin(t*4+u.anim-i*.62)*7-i*2.5;points.push([x,y])}
- ctx.strokeStyle='rgba(5,5,12,.45)';ctx.lineWidth=18;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x+3,y+5):ctx.moveTo(x+3,y+5));ctx.stroke();
- points.slice().reverse().forEach(([x,y],j)=>{let r=7+j*.45;ellipse(x,y,r,r*.72,j%2?p[0]:p[1],p[2],1.2);ctx.fillStyle='rgba(255,240,189,.38)';ctx.beginPath();ctx.arc(x-dir*2,y-2,1.4,0,Math.PI*2);ctx.fill()});
- const hx=dir*(36+strike*13),hy=-2+step*2;
- ctx.fillStyle=metal(p);ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hx+dir*25,hy);ctx.lineTo(hx-dir*5,hy-18);ctx.lineTo(hx-dir*17,hy);ctx.lineTo(hx-dir*5,hy+18);ctx.closePath();ctx.fill();ctx.stroke();
- /* Duas barbatanas crescentes sustentam o voo rasante. */
- for(const s of [-1,1]){ctx.save();ctx.translate(dir*2,s*15);ctx.rotate(s*(.35+step*.05));ctx.fillStyle=s>0?p[2]:p[1];ctx.globalAlpha=.82;ctx.beginPath();ctx.moveTo(-26,0);ctx.quadraticCurveTo(0,s*28,31,0);ctx.quadraticCurveTo(0,s*11,-26,0);ctx.fill();ctx.restore()}ctx.globalAlpha=1;
- ellipse(hx+dir*8,hy-4,3.2,3.2,p[3]);
- /* Eclipse é um órgão/anel atrás da cabeça, não aura do corpo inteiro. */
- ctx.strokeStyle=p[2];ctx.lineWidth=4;ctx.beginPath();ctx.arc(hx-dir*8,hy,21,t*.4,t*.4+Math.PI*1.55);ctx.stroke();
- ctx.fillStyle=p[3];ctx.beginPath();ctx.moveTo(hx+dir*26,hy);ctx.lineTo(hx+dir*35,hy-4);ctx.lineTo(hx+dir*35,hy+4);ctx.closePath();ctx.fill();
- if(strike){ctx.globalAlpha=strike;ctx.fillStyle=p[2];ctx.beginPath();ctx.moveTo(hx+dir*35,hy);ctx.lineTo(hx+dir*67,hy-10);ctx.lineTo(hx+dir*58,hy);ctx.lineTo(hx+dir*67,hy+10);ctx.closePath();ctx.fill();ctx.globalAlpha=1}
+ const dir=u.side,step=movingPulse(u,t),strike=attackPulse(u,t),level=u.legendLevel||1,points=[];
+ const attackCount=u.vesperAttackCount||0,poisonReady=(u.vesperPoisonReadyAt??Infinity)<=t,dashCharge=Math.min(3,attackCount),dashFlash=Math.max(0,1-(t-(u.powerFlash??-999))/.42),maxSpeed=level>=12;
+ const waveSpeed=maxSpeed?5.8:4.4;
+ for(let i=0;i<12;i++){
+   const taper=1-i/16,x=-dir*(i*9-26-dashFlash*8),y=7+Math.sin(t*waveSpeed+u.anim-i*.66)*6.5-i*1.8;
+   points.push([x,y,Math.max(3.5,8.5*taper)])
+ }
+ /* rastro de rasante: aparece só quando ela realmente acabou de avançar */
+ if(dashFlash>0||maxSpeed){ctx.save();ctx.globalAlpha=(dashFlash*.42)+(maxSpeed?.08:0);ctx.strokeStyle=p[2];ctx.lineWidth=10;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x-dir*(12+dashFlash*18),y+4):ctx.moveTo(x-dir*(12+dashFlash*18),y+4));ctx.stroke();ctx.restore()}
+ ctx.strokeStyle='rgba(5,5,12,.5)';ctx.lineWidth=17;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x+3,y+5):ctx.moveTo(x+3,y+5));ctx.stroke();
+ points.slice().reverse().forEach(([x,y,r],j)=>{ellipse(x,y,r,r*.7,j%2?p[0]:p[1],p[2],1.15);if(j%3===0){ctx.fillStyle='rgba(255,240,189,.38)';ctx.beginPath();ctx.arc(x-dir*2,y-2,1.3,0,Math.PI*2);ctx.fill()}});
+ const hx=dir*(38+strike*12+dashFlash*10),hy=-3+step*2;
+ ctx.fillStyle=metal(p);ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hx+dir*27,hy);ctx.lineTo(hx-dir*3,hy-18);ctx.lineTo(hx-dir*18,hy);ctx.lineTo(hx-dir*3,hy+18);ctx.closePath();ctx.fill();ctx.stroke();
+ /* barbatanas em foice, inclinadas para frente quando o rasante está armado */
+ for(const s of [-1,1]){ctx.save();ctx.translate(dir*3,s*14);ctx.rotate(s*(.32+step*.04)-dir*dashCharge*.025);ctx.fillStyle=s>0?p[2]:p[1];ctx.globalAlpha=.84;ctx.beginPath();ctx.moveTo(-29,0);ctx.quadraticCurveTo(0,s*(27+dashCharge*2),33,0);ctx.quadraticCurveTo(0,s*10,-29,0);ctx.fill();ctx.restore()}ctx.globalAlpha=1;
+ ellipse(hx+dir*9,hy-4,3.2,3.2,p[3]);
+ /* anel do Eclipse também funciona como contador dos três ataques que antecedem o rasante */
+ ctx.strokeStyle=p[2];ctx.lineWidth=4;ctx.beginPath();ctx.arc(hx-dir*9,hy,22,t*.35,t*.35+Math.PI*1.6);ctx.stroke();
+ for(let i=0;i<4;i++){
+   const a=-Math.PI*.72+i*Math.PI*.48,x=hx-dir*9+Math.cos(a)*26,y=hy+Math.sin(a)*26,filled=i<dashCharge;
+   ellipse(x,y,filled?3.8:2.4,filled?3.8:2.4,filled?p[3]:'rgba(255,255,255,.22)');
+ }
+ if(dashCharge===3){ctx.save();ctx.globalAlpha=.38+.25*Math.sin(t*7);ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.arc(hx-dir*9,hy,31,0,Math.PI*2);ctx.stroke();ctx.restore()}
+ /* veneno carregado fica visível em duas bolsas atrás da cabeça */
+ const venom=poisonReady?'#9cff72':'#315338';ellipse(hx-dir*11,hy-10,5.2,7.4,venom,poisonReady?'#d9ffbf':null,1.2);ellipse(hx-dir*15,hy+8,4.5,6.4,venom,poisonReady?'#d9ffbf':null,1.1);
+ if(poisonReady){ctx.save();ctx.globalAlpha=.18+.12*Math.sin(t*5);ctx.fillStyle='#9cff72';ctx.beginPath();ctx.arc(hx-dir*11,hy,19,0,Math.PI*2);ctx.fill();ctx.restore()}
+ ctx.fillStyle=p[3];ctx.beginPath();ctx.moveTo(hx+dir*28,hy);ctx.lineTo(hx+dir*38,hy-4);ctx.lineTo(hx+dir*38,hy+4);ctx.closePath();ctx.fill();
+ if(strike){ctx.globalAlpha=strike;ctx.fillStyle=poisonReady?'#9cff72':p[2];ctx.beginPath();ctx.moveTo(hx+dir*37,hy);ctx.lineTo(hx+dir*(67+dashFlash*15),hy-10);ctx.lineTo(hx+dir*(58+dashFlash*12),hy);ctx.lineTo(hx+dir*(67+dashFlash*15),hy+10);ctx.closePath();ctx.fill();ctx.globalAlpha=1}
+ if(maxSpeed){ctx.save();ctx.globalAlpha=.32;ctx.strokeStyle=p[3];ctx.lineWidth=1.6;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-dir*(42+i*12),-18+i*13);ctx.lineTo(-dir*(72+i*15),-18+i*13);ctx.stroke()}ctx.restore()}
 }
 
 function drawLegendBody(u,t,data){
@@ -116,14 +125,16 @@ function drawLegendHud(u,data){
  ctx.fillStyle='rgba(7,8,12,.92)';ctx.strokeStyle=data.palette[2];ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-72,67,144,25,7);ctx.fill();ctx.stroke();ctx.fillStyle='#fff8e8';ctx.font='900 11px system-ui';ctx.textAlign='center';ctx.fillText(`${u.name} • L${level} • LENDA`,0,84)
 }
 function renderLegendUnit(u,t){
- const data=legendData(u),y=yOf(u),bob=data.id==='vesper'?Math.sin(t*3+u.anim)*4:0,scale=(1.18+y/VIEW_H*.2)*(data.id==='karkinos'?1.13:data.id==='nefal'?1.24:1);
- ctx.save();ctx.translate(u.x,y+bob);ctx.scale(scale,scale);ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(0,48,data.id==='karkinos'?62:48,11,0,0,Math.PI*2);ctx.fill();teamGround(u,t,data.id==='karkinos'?58:45);drawLegendBody(u,t,data);drawLegendHud(u,data);ctx.restore()
+ const data=legendData(u),y=yOf(u),bob=data.id==='vesper'?Math.sin(t*3+u.anim)*4:0,scale=(1.18+y/VIEW_H*.2)*(data.id==='karkinos'?1.16:data.id==='nefal'?1.24:1.06);
+ ctx.save();ctx.translate(u.x,y+bob);ctx.scale(scale,scale);ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(0,48,data.id==='karkinos'?68:50,11,0,0,Math.PI*2);ctx.fill();teamGround(u,t,data.id==='karkinos'?62:47);drawLegendBody(u,t,data);drawLegendHud(u,data);ctx.restore()
 }
 drawUnit=function(u,t){if(!u.special?.legend)return previousDrawUnit(u,t);renderLegendUnit(u,t)};
 
 function drawPreview(canvas,id){
- const data=SL_LEGENDS_API.get(id),c=canvas.getContext('2d'),old=window.ctx,dummy={side:1,anim:1,lastAttack:id==='nefal'?1.54:-99,lastMoved:0,special:{legendKind:id},name:data.name,hp:data.hp,maxHp:data.hp,legendLevel:1,legendXp:0,legendNextXp:120};
- window.ctx=c;c.clearRect(0,0,canvas.width,canvas.height);let bg=c.createRadialGradient(180,88,8,180,88,170);bg.addColorStop(0,data.palette[0]+'cc');bg.addColorStop(.58,'#11101e');bg.addColorStop(1,'#07090d');c.fillStyle=bg;c.fillRect(0,0,canvas.width,canvas.height);c.save();c.translate(180,id==='nefal'?116:106);const scale=id==='karkinos'?1.02:id==='nefal'?1.02:1.12;c.scale(scale,scale);drawLegendBody(dummy,1.7,data);c.restore();c.fillStyle=data.palette[2];c.globalAlpha=.75;c.fillRect(24,157,312,2);c.globalAlpha=1;window.ctx=old
+ const data=SL_LEGENDS_API.get(id),c=canvas.getContext('2d'),old=window.ctx,dummy={side:1,anim:1,lastAttack:id==='nefal'?1.54:-99,lastMoved:0,special:{...(data.special||{}),legendKind:id},name:data.name,hp:data.hp,maxHp:data.hp,legendLevel:id==='vesper'?12:1,legendXp:0,legendNextXp:350,powerFlash:id==='vesper'?1.5:-999};
+ if(id==='karkinos'){dummy.karkinosBodyMaxHp=data.hp;dummy.karkinosShellMax=Math.round(data.hp*(data.special?.shellPct||.30));dummy.maxHp=dummy.hp=data.hp+dummy.karkinosShellMax;dummy.karkinosPinchReadyAt=0}
+ if(id==='vesper'){dummy.vesperAttackCount=3;dummy.vesperPoisonReadyAt=0}
+ window.ctx=c;c.clearRect(0,0,canvas.width,canvas.height);let bg=c.createRadialGradient(180,88,8,180,88,170);bg.addColorStop(0,data.palette[0]+'cc');bg.addColorStop(.58,'#11101e');bg.addColorStop(1,'#07090d');c.fillStyle=bg;c.fillRect(0,0,canvas.width,canvas.height);c.save();c.translate(180,id==='nefal'?116:id==='karkinos'?108:106);const scale=id==='karkinos'?.98:id==='nefal'?1.02:1.08;c.scale(scale,scale);drawLegendBody(dummy,1.7,data);c.restore();c.fillStyle=data.palette[2];c.globalAlpha=.75;c.fillRect(24,157,312,2);c.globalAlpha=1;window.ctx=old
 }
 function drawWorldEffects(t){
  const list=window.SL_NEFAL_SYSTEM?.fx||[];
