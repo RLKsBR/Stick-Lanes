@@ -3,7 +3,7 @@
    recebem a mesma ordem. Cliques em inimigos focam o alvo; chão move o grupo. */
 'use strict';
 (function(){
-const PLAYER=1,LANE_HIT_RADIUS=285,STRUCTURE_HIT_RADIUS=125,STRUCTURE_CORE_RADIUS=72,UNIT_HIT_RADIUS=105,LEGEND_HIT_RADIUS=145;
+const PLAYER=1,LANE_HIT_RADIUS=285,STRUCTURE_HIT_RADIUS=125,STRUCTURE_CORE_RADIUS=72,UNIT_HIT_RADIUS=105,LEGEND_HIT_RADIUS=145,LEGEND_PRIORITY_RADIUS=90,LEGEND_PRIORITY_BONUS=34;
 const map=window.SL_MOBA_SQUARE_V2;
 if(!map)return;
 let activeMarker=null,quickBar=null;
@@ -63,8 +63,16 @@ function closestStructure(world){
  return distance<=STRUCTURE_HIT_RADIUS?{structure:best,distance}:null
 }
 function closestEnemyUnit(world){
- let best=null,distance=Infinity;
- for(const u of units){if(u.dead||u.side===PLAYER)continue;const p=map.unitPos(u),d=Math.hypot(p.x-world.x,p.y-world.y),limit=u.special?.legend?LEGEND_HIT_RADIUS:UNIT_HIT_RADIUS;if(d<=limit&&d<distance){best=u;distance=d}}
+ let best=null,distance=Infinity,bestScore=Infinity;
+ for(const u of units){
+   if(u.dead||u.side===PLAYER)continue;
+   const p=map.unitPos(u),d=Math.hypot(p.x-world.x,p.y-world.y),legend=!!u.special?.legend,limit=legend?LEGEND_HIT_RADIUS:UNIT_HIT_RADIUS;
+   if(d>limit)continue;
+   /* Um toque preciso no corpo da Lenda recebe pequena prioridade sobre corpos
+      sobrepostos. Fora desse miolo, a unidade realmente mais próxima vence. */
+   const score=d-(legend&&d<=LEGEND_PRIORITY_RADIUS?LEGEND_PRIORITY_BONUS:0);
+   if(score<bestScore||(score===bestScore&&legend&&!best?.special?.legend)){best=u;distance=d;bestScore=score}
+ }
  return best?{unit:best,distance}:null
 }
 function structureTarget(hit){const s=hit.structure,t=(s.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]);return{kind:'structure',structure:s,lane:s.lane,x:s.x,t,world:map.structurePos(s)}}
