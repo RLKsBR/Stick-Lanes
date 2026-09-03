@@ -5,9 +5,10 @@
    Corrige o ping-pong observado em gameplay: lane -> buff -> lane -> buff.
 */
 'use strict';
-(function(){
+(function boot(){
 const map=window.SL_MOBA_SQUARE_V2;
-if(!map||!window.SL_LEGEND_INTENT_ARBITER||typeof simulationStep!=='function')return;
+if(!map||!window.SL_LEGEND_INTENT_ARBITER||typeof simulationStep!=='function'){setTimeout(boot,40);return}
+if(window.SL_AI_LEGEND_AUTHORITY?.version>=1)return;
 
 const state={1:fresh(),'-1':fresh()};
 let executing=false,blockedBuffHijacks=0,restores=0;
@@ -90,8 +91,6 @@ function enforce(side,t){
  u.slAuthority={intent:sig(i),until:state[side].until,restores,blockedSwitches:state[side].blockedSwitches};
 }
 
-/* O antigo cérebro de buffs pode continuar calculando valor do objetivo, mas não
-   tem mais permissão para mover uma Lenda IA diretamente. */
 const buffs=window.SL_BUFF_SYSTEM;
 if(buffs?.travelToZone){
  const rawTravel=buffs.travelToZone;
@@ -101,8 +100,6 @@ if(buffs?.travelToZone){
  };
 }
 
-/* Antes do frame: garante que a Lenda começa movendo segundo a intenção estável.
-   Depois do frame: desfaz qualquer escrita física feita por módulos legados. */
 const prevStep=simulationStep;
 simulationStep=function(dt){
  for(const side of[1,-1])enforce(side,simTime);
