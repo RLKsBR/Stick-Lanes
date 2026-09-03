@@ -1,5 +1,5 @@
-/* Stick Lanes — comandos contextuais de alvo v1
-   Tropas permanecem na lane; Lendas podem atravessar o mapa e ocupar buffs. */
+/* Stick Lanes — comandos contextuais de alvo v2
+   Tropas permanecem na lane; Lendas atravessam o mapa, focam estruturas e disputam jungles. */
 'use strict';
 (function(){
 const PLAYER=1,LANE_HIT_RADIUS=285,STRUCTURE_HIT_RADIUS=125;
@@ -13,8 +13,11 @@ function targetWorld(target){
  if(target.structure){const s=structures.find(x=>x.id===target.structure.id);if(s)return map.structurePos(s)}
  return target.world
 }
+function buffReady(target){return target.kind!=='buff'||!window.SL_BUFF_SYSTEM?.canCapture||window.SL_BUFF_SYSTEM.canCapture(target.buff,simTime)}
 function targetLabel(target){
- if(target.kind==='buff')return`${target.buff.name} • objetivo neutro`;
+ if(target.kind==='buff'){
+   const state=window.SL_BUFF_SYSTEM?.zoneState?.(target.buff.id,simTime);return`${target.buff.name}${state?` • ${state.label}`:' • objetivo neutro'}`
+ }
  if(target.structure)return target.structure.label||'Estrutura';
  return['Top','Mid','Bot'][target.lane]+' — posição'
 }
@@ -28,7 +31,7 @@ function beginLegendTravel(u,target){
  let start=map.unitPos(u);clearManual(u);u.tacticalWorld={x:start.x,y:start.y,a:start.a||0};u.tacticalDestination={...target,world:{...target.world}}
 }
 function commandLegend(target){
- let legend=playerLegends()[0];if(!legend)return false;
+ let legend=playerLegends()[0];if(!legend||!buffReady(target))return false;
  if(target.kind==='buff'||legend.lane!==target.lane||legend.tacticalWorld)beginLegendTravel(legend,target);else assignLaneTarget(legend,target);
  activeMarker={group:'LENDA',target,color:'#8fd9c0'};return true
 }
@@ -41,8 +44,9 @@ function ensureMenu(){
  if(menu)return menu;menu=document.createElement('div');menu.id='tacticalCommandMenu';menu.className='tacticalCommandMenu';menu.hidden=true;menu.setAttribute('role','dialog');menu.setAttribute('aria-label','Escolher quem recebe o comando');document.body.appendChild(menu);return menu
 }
 function openMenu(target,client){
- const el=ensureMenu(),hasLegend=playerLegends().length>0,hasTroop=target.kind!=='buff'&&playerTroops(target.lane).length>0;
- el.innerHTML=`<strong>${targetLabel(target)}</strong><small>${target.structure&&target.structure.side!==PLAYER?'Focar alvo':'Mover para o local'}</small><div class="tacticalChoices"><button data-group="legend" ${hasLegend?'':'disabled'}>Lenda</button>${target.kind==='buff'?'':`<button data-group="troops" ${hasTroop?'':'disabled'}>Tropas</button>`}</div>${hasLegend?'':'<em>Nenhuma Lenda em campo</em>'}`;
+ const el=ensureMenu(),legendPresent=playerLegends().length>0,ready=buffReady(target),hasLegend=legendPresent&&ready,hasTroop=target.kind!=='buff'&&playerTroops(target.lane).length>0;
+ const note=!legendPresent?'Nenhuma Lenda em campo':target.kind==='buff'&&!ready?(window.SL_BUFF_SYSTEM?.zoneState?.(target.buff.id,simTime)?.label||'Buff indisponível'):'';
+ el.innerHTML=`<strong>${targetLabel(target)}</strong><small>${target.structure&&target.structure.side!==PLAYER?'Focar alvo':target.kind==='buff'?'Capturar com a Lenda':'Mover para o local'}</small><div class="tacticalChoices"><button data-group="legend" ${hasLegend?'':'disabled'}>Lenda</button>${target.kind==='buff'?'':`<button data-group="troops" ${hasTroop?'':'disabled'}>Tropas</button>`}</div>${note?`<em>${note}</em>`:''}`;
  el.style.left=Math.min(innerWidth-176,Math.max(8,client.x+10))+'px';el.style.top=Math.min(innerHeight-130,Math.max(8,client.y-24))+'px';el.hidden=false;
  el.querySelectorAll('button').forEach(button=>button.onclick=()=>{let ok=button.dataset.group==='legend'?commandLegend(target):commandTroops(target);if(ok)closeMenu()});
 }
@@ -98,5 +102,5 @@ function drawMarker(){
 const baseDraw=draw;draw=function(t){baseDraw(t);ensureQuickBar();if(quickBar){let legend=playerLegends()[0],button=quickBar.querySelector('[data-view="legend"]');if(button)button.disabled=!legend}drawMarker()};
 document.addEventListener('pointerdown',e=>{if(menu&&!menu.hidden&&!menu.contains(e.target)&&e.target!==canvas)closeMenu()},true);
 
-window.SL_TACTICAL_TARGETING={handleMapTap,handleUnit,clearTroopTargets,commandLegend,commandTroops,clickedTarget,jumpCamera,get activeMarker(){return activeMarker}};
+window.SL_TACTICAL_TARGETING={handleMapTap,handleUnit,clearTroopTargets,commandLegend,commandTroops,clickedTarget,jumpCamera,buffReady,get activeMarker(){return activeMarker},health(){return{map:!!map,buffTargets:map.buffZones?.length||0,legendInField:playerLegends().length,menuReady:true}}};
 })();
