@@ -1,4 +1,4 @@
-/* Stick Lanes — jungles, quatro buffs e respawn das Lendas v3.
+/* Stick Lanes — jungles, quatro buffs e respawn das Lendas v4.
    Duas jungles, cada uma dividida em duas metades. Qualquer Lenda pode
    disputar qualquer metade. Não existe mais Cegueira ou ocultação de inimigos. */
 'use strict';
@@ -52,24 +52,29 @@ function livingLegend(side){return units.find(unit=>!unit.dead&&unit.side===side
 function isBlinded(){return false}
 function hideEnemy(){return false}
 function hasBuff(side,id,t=simTime){const s=stateFor(id);return!!s&&s.owner===side&&t<s.activeUntil}
-function canCapture(zone,t){return t>=stateFor(zone.id).readyAt}
+function canCapture(zone,t=simTime){const s=zone&&stateFor(zone.id);return!!s&&t>=s.readyAt}
 function sideName(side){return side===1?'LARANJA':'VERMELHO'}
 function sideColor(side){return side===1?'#f08a24':side===-1?'#c93645':'#9aa6aa'}
 function returnLegendToLane(legend){
+  if(!legend||legend.dead)return;
   const lane=Number.isInteger(legend.legendHomeLane)?legend.legendHomeLane:legend.lane,t=legend.side===1?.24:.76,p=map.routePoint(lane,t),x=BASE_X[1]+t*(BASE_X[-1]-BASE_X[1]);
-  legend.tacticalDestination={kind:'point',lane,x,t,world:{x:p.x,y:p.y}};delete legend.manualBuff
+  if(!legend.tacticalWorld){const start=worldOf(legend);legend.tacticalWorld={x:start.x,y:start.y,a:start.a||0}}
+  legend.tacticalDestination={kind:'point',lane,x,t,world:{x:p.x,y:p.y}};delete legend.manualBuff;delete legend.manualTargetId;delete legend.manualHold
 }
+function assignedToZone(legend,zone){
+  if(!legend)return false;if(legend.manualBuff===zone.id)return true;
+  return legend.tacticalDestination?.kind==='buff'&&legend.tacticalDestination?.buff?.id===zone.id
+}
+function clearUnavailableAssignments(zone){for(const side of [1,-1]){const legend=livingLegend(side);if(assignedToZone(legend,zone))returnLegendToLane(legend)}}
 function activate(zone,t,legend){
   const s=stateFor(zone.id);s.owner=legend.side;s.progress=0;s.capturingSide=0;s.contested=false;s.activeUntil=t+ACTIVE_SECONDS;s.readyAt=s.activeUntil+RECHARGE_SECONDS;
-  legend.powerFlash=t;effects.push({type:'buff',x:legend.x,y:yOf(legend),t,color:sideColor(legend.side)});returnLegendToLane(legend)
+  legend.powerFlash=t;effects.push({type:'buff',x:legend.x,y:yOf(legend),t,color:sideColor(legend.side)});returnLegendToLane(legend);clearUnavailableAssignments(zone)
 }
-function legendsInside(zone){
-  return[1,-1].map(side=>livingLegend(side)).filter(Boolean).filter(legend=>containsBuff(zone,worldOf(legend)))
-}
+function legendsInside(zone){return[1,-1].map(side=>livingLegend(side)).filter(Boolean).filter(legend=>containsBuff(zone,worldOf(legend)))}
 function updateCapture(zone,dt,t){
   const s=stateFor(zone.id);
   if(s.owner&&t>=s.activeUntil)s.owner=0;
-  if(!canCapture(zone,t)){s.progress=0;s.capturingSide=0;s.contested=false;return}
+  if(!canCapture(zone,t)){s.progress=0;s.capturingSide=0;s.contested=false;clearUnavailableAssignments(zone);return}
   const inside=legendsInside(zone),capturers=inside.filter(l=>l.manualBuff===zone.id);
   if(capturers.length!==1||inside.some(l=>l.side!==capturers[0]?.side)){
     s.contested=inside.length>1;s.progress=0;s.capturingSide=0;return
@@ -128,17 +133,14 @@ if(window.SL_TACTICAL_TARGETING?.handleUnit){
     const base=unit.speed;unit.speed=base*mult;try{return previousHandleUnit(unit,dt,t)}finally{unit.speed=base}
   }
 }
-function applyRegeneration(dt,t){
-  for(const unit of units){if(unit.dead)continue;const rate=regenRate(unit.side,t);if(rate>0&&unit.hp<unit.maxHp)unit.hp=Math.min(unit.maxHp,unit.hp+unit.maxHp*rate*dt)}
-}
+function applyRegeneration(dt,t){for(const unit of units){if(unit.dead)continue;const rate=regenRate(unit.side,t);if(rate>0&&unit.hp<unit.maxHp)unit.hp=Math.min(unit.maxHp,unit.hp+unit.maxHp*rate*dt)}}
 
-/* Overlay novo das duas jungles. O renderer antigo não desenha nada porque
-   map.buffArenas foi esvaziado acima. */
+/* O moba-square chama drawWorldBarrier ainda dentro da transformação do mundo,
+   antes de estruturas e unidades. Usamos esse gancho apenas para desenhar as jungles. */
 function arenaPath(arena){const w=arena.w/2,h=arena.h/2,c=110;ctx.beginPath();ctx.moveTo(-w+c,-h);ctx.lineTo(w-c,-h);ctx.lineTo(w,-h+c);ctx.lineTo(w,h-c);ctx.lineTo(w-c,h);ctx.lineTo(-w+c,h);ctx.lineTo(-w,h-c);ctx.lineTo(-w,-h+c);ctx.closePath()}
-function drawBuffWorld(t){
-  ctx.save();ctx.scale(map.zoom,map.zoom);ctx.translate(-map.cameraX,-map.cameraY);
+function drawWorldBarrier(t){
   for(const arena of JUNGLES){
-    ctx.save();ctx.translate(arena.x,arena.y);ctx.rotate(arena.a);ctx.fillStyle='rgba(4,8,12,.36)';arenaPath(arena);ctx.fill();ctx.strokeStyle='rgba(205,220,224,.34)';ctx.lineWidth=14;ctx.stroke();
+    ctx.save();ctx.translate(arena.x,arena.y);ctx.rotate(arena.a);ctx.fillStyle='rgba(4,8,12,.78)';arenaPath(arena);ctx.fill();ctx.strokeStyle='rgba(205,220,224,.34)';ctx.lineWidth=14;ctx.stroke();
     ctx.strokeStyle='rgba(226,237,238,.32)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-arena.h/2+62);ctx.lineTo(0,arena.h/2-62);ctx.stroke();
     ctx.textAlign='center';ctx.fillStyle='#edf2ef';ctx.font='900 30px system-ui';ctx.fillText(arena.label,0,-arena.h/2+52);
     for(const half of ['left','right']){
@@ -150,11 +152,7 @@ function drawBuffWorld(t){
     }
     ctx.restore()
   }
-  ctx.restore()
 }
-const previousDraw=draw;
-draw=function(t){previousDraw(t);drawBuffWorld(t)};
-function drawWorldBarrier(){}
 function drawScreenBarrier(){}
 
 /* Respawn das Lendas. L1 = 16s; cada nível acrescenta 2s; L12 = 38s. */
@@ -180,7 +178,7 @@ reset=function(){pending[1]=pending[-1]=null;resetBuffs();return previousReset()
 
 window.SL_BUFF_SYSTEM={
   captureSeconds:CAPTURE_SECONDS,activeSeconds:ACTIVE_SECONDS,rechargeAfterActive:RECHARGE_SECONDS,
-  zones:ZONES,jungles:JUNGLES,defs:BUFF_DEFS,isBlinded,hideEnemy,hasBuff,zoneState,updateBuffs,reset:resetBuffs,
+  zones:ZONES,jungles:JUNGLES,defs:BUFF_DEFS,isBlinded,hideEnemy,hasBuff,canCapture,zoneState,updateBuffs,reset:resetBuffs,
   travelToZone,containsBuff,attackSpeedBonus,moveBonus,damageBonus,regenRate,troopNearLegend,
   drawWorldBarrier,drawScreenBarrier,get blindedUntil(){return{...blindedUntil}}
 };
