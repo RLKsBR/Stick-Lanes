@@ -293,6 +293,18 @@ const strategy = vm.runInContext(`(()=>{
  return{lanes,counts:[0,1,2].map(lane=>lanes.filter(x=>x===lane).length)}
 })()`,context);
 
+const balancedStrategy = vm.runInContext(`(()=>{
+ sideSpawnWeights[1]=[1,1,1];spawnStrategyState[1]={total:0,counts:[0,0,0]};
+ const lanes=Array.from({length:9},()=>nextStrategyLane(1));
+ return{lanes,counts:[0,1,2].map(lane=>lanes.filter(x=>x===lane).length)}
+})()`,context);
+
+const minionPlan = vm.runInContext(`({
+ perLane:SL_MINION_WAVE_V2.totalPerLane,
+ perSide:SL_MINION_WAVE_V2.totalPerSide,
+ roles:SL_MINION_WAVE_V2.formation.map(x=>x.type)
+})`,context);
+
 const collision = vm.runInContext(`(()=>{
   const pair=structures.find(s=>s.auxiliary),direction=pair.side===1?1:-1;
   const probe={id:2,lane:pair.lane,sub:0,subTarget:0,x:pair.x-direction*180,speed:5,slowUntil:0,runTime:0,fac:'Teste'};
@@ -307,26 +319,33 @@ const tactical = vm.runInContext(`(()=>{
   const tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),towerTarget=SL_TACTICAL_TARGETING.clickedTarget(SL_MOBA_SQUARE_V2.structurePos(tower));
   const troopsOk=SL_TACTICAL_TARGETING.commandTroops(towerTarget)&&troop.manualTargetId===tower.id;
   const legendOk=SL_TACTICAL_TARGETING.commandLegend(towerTarget)&&(legend.manualTargetId===tower.id||!!legend.tacticalWorld);
-  const buff=SL_MOBA_SQUARE_V2.buffZones[0],buffTarget=SL_TACTICAL_TARGETING.clickedTarget({x:buff.x,y:buff.y});SL_TACTICAL_TARGETING.commandLegend(buffTarget);
+  const buff=SL_MOBA_SQUARE_V2.buffZones.find(z=>z.id==='buff1'),buffTarget=SL_TACTICAL_TARGETING.clickedTarget({x:buff.x,y:buff.y});
+  const buffCommand=SL_TACTICAL_TARGETING.commandLegend(buffTarget);
   const before=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);SL_TACTICAL_TARGETING.handleUnit(legend,.5,simTime);const after=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);
   const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special.legend)||spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;legend.special.dodge=0;attack(enemyLegend,legend,simTime+1);
   const minion={minion:true,special:{}},normalTroop={minion:false,special:{}},plainLegend={minion:false,special:{legend:true}};
   const normal=[SL_TURRETS_V1.priorityFor(minion,false),SL_TURRETS_V1.priorityFor(normalTroop,false),SL_TURRETS_V1.priorityFor(plainLegend,false)];
   const defensive=[SL_TURRETS_V1.priorityFor(plainLegend,true),SL_TURRETS_V1.priorityFor(normalTroop,true),SL_TURRETS_V1.priorityFor(minion,true)];
   const cameraBefore=SL_MOBA_SQUARE_V2.cameraX;SL_TACTICAL_TARGETING.jumpCamera('1');
-  return{troopsOk,legendOk,buffOnly:buffTarget.kind==='buff'&&buffTarget.lane===null,moved:after<before,aggro:enemyLegend.legendAggroDefendingSide===1&&enemyLegend.legendAggroUntil>simTime,normal,defensive,cameraMoved:SL_MOBA_SQUARE_V2.cameraX!==cameraBefore}
+  const health=SL_TACTICAL_TARGETING.health();
+  return{troopsOk,legendOk,buffCommand,buffOnly:buffTarget.kind==='buff'&&buffTarget.lane===null,moved:after<before,aggro:enemyLegend.legendAggroDefendingSide===1&&enemyLegend.legendAggroUntil>simTime,normal,defensive,cameraMoved:SL_MOBA_SQUARE_V2.cameraX!==cameraBefore,health}
 })()`,context);
 
 const legendAndBuff = vm.runInContext(`(()=>{
   gameMode='pve';
   const nefal=units.find(u=>!u.dead&&u.side===1&&u.special?.legend)||spawnUnit(1,1,'Lendas',SL_LEGENDS_API.get('nefal'),{legend:true});
   nefal.special.legendKind='nefal';SL_NEFAL_SYSTEM.ensureProgress(nefal);
-  const orangeZone=SL_MOBA_SQUARE_V2.buffZones.find(z=>z.side===1),redLegend=units.find(u=>!u.dead&&u.side===-1&&u.special?.legend);
-  if(redLegend){redLegend.tacticalWorld={x:6200,y:620};delete redLegend.manualBuff}
-  nefal.tacticalWorld={x:orangeZone.x,y:orangeZone.y};nefal.manualBuff=orangeZone.id;delete nefal.tacticalDestination;
+  const zone=SL_MOBA_SQUARE_V2.buffZones.find(z=>z.id==='buff1'),redLegend=units.find(u=>!u.dead&&u.side===-1&&u.special?.legend);
+  if(redLegend){redLegend.tacticalWorld={x:6200,y:620};delete redLegend.manualBuff;delete redLegend.tacticalDestination}
+  nefal.tacticalWorld={x:zone.x,y:zone.y};nefal.manualBuff=zone.id;delete nefal.tacticalDestination;
   SL_BUFF_SYSTEM.updateBuffs(15.1,100);
-  const target={minion:false,special:{legend:true},maxHp:2000};
-  return{zones:SL_MOBA_SQUARE_V2.buffZones.length,arenas:SL_MOBA_SQUARE_V2.buffArenas.length,capture:SL_BUFF_SYSTEM.captureSeconds,blind:SL_BUFF_SYSTEM.isBlinded(-1,100),procChance:SL_NEFAL_SYSTEM.procChance,procTotal:SL_NEFAL_SYSTEM.procTable.at(-1).limit,legendLevel:nefal.legendLevel,legendHp:SL_LEGENDS_API.get('nefal').hp,legendCap:SL_NEFAL_SYSTEM.targetCap(target)}
+  const target={minion:false,special:{legend:true},maxHp:2000},defs=SL_BUFF_SYSTEM.defs;
+  return{
+    zones:SL_MOBA_SQUARE_V2.buffZones.length,jungles:SL_BUFF_SYSTEM.jungles.length,oldArenas:SL_MOBA_SQUARE_V2.buffArenas.length,
+    capture:SL_BUFF_SYSTEM.captureSeconds,blind:SL_BUFF_SYSTEM.isBlinded(-1,100),buff1Active:SL_BUFF_SYSTEM.hasBuff(1,'buff1',100),
+    b1:[defs.buff1.move,defs.buff1.attackSpeed],b2:[defs.buff2.attackSpeed,defs.buff2.damage],b3:defs.buff3.regen,b4:[defs.buff4.damage,defs.buff4.auraDamage],
+    procChance:SL_NEFAL_SYSTEM.procChance,procTotal:SL_NEFAL_SYSTEM.procTable.at(-1).limit,legendLevel:nefal.legendLevel,legendHp:SL_LEGENDS_API.get('nefal').hp,legendCap:SL_NEFAL_SYSTEM.targetCap(target)
+  }
 })()`,context);
 
 if (!byId('mainMenu').hidden) throw new Error('menu principal permaneceu visível');
@@ -346,16 +365,19 @@ if (state.aiAdjustments<1||!state.modeText.includes('IA adaptativa')) throw new 
 if (JSON.stringify(state.legendCatalog)!=='["nefal","karkinos","vesper"]') throw new Error(`catálogo de Lendas inválido: ${state.legendCatalog}`);
 if (state.livingLegends.length!==2||![-1,1].every(side=>state.livingLegends.some(x=>x.side===side))) throw new Error(`Lendas não entraram com a primeira onda: ${JSON.stringify(state.livingLegends)}`);
 if (JSON.stringify(strategy.counts)!=='[6,2,2]') throw new Error(`proporção 3:1:1 não foi respeitada: ${JSON.stringify(strategy)}`);
+if (JSON.stringify(balancedStrategy.counts)!=='[3,3,3]'||JSON.stringify(balancedStrategy.lanes)!=='[0,1,2,0,1,2,0,1,2]') throw new Error(`proporção 1:1:1 não foi respeitada: ${JSON.stringify(balancedStrategy)}`);
+if (minionPlan.perLane!==6||minionPlan.perSide!==18||JSON.stringify(minionPlan.roles)!=='["tank","fighter","fighter","ranged","ranged","ranged"]') throw new Error(`onda de minions inválida: ${JSON.stringify(minionPlan)}`);
 if (!state.unitSubs.includes(-2) || !state.unitSubs.includes(2)) throw new Error('formação não ocupa as cinco sub-lanes');
 if (Math.abs(collision.target)!==2) throw new Error('unidade não desviou do bloqueio central das torretas para as sub-lanes 1 ou 5');
-if (!tactical.troopsOk||!tactical.legendOk||!tactical.buffOnly||!tactical.moved||!tactical.aggro||!tactical.cameraMoved) throw new Error(`comando contextual incompleto: ${JSON.stringify(tactical)}`);
+if (!tactical.troopsOk||!tactical.legendOk||!tactical.buffCommand||!tactical.buffOnly||!tactical.moved||!tactical.aggro||!tactical.cameraMoved||tactical.health.buffTargets!==4) throw new Error(`comando contextual incompleto: ${JSON.stringify(tactical)}`);
 if (JSON.stringify(tactical.normal)!=='[0,1,2]'||JSON.stringify(tactical.defensive)!=='[0,1,2]') throw new Error(`prioridades das torres inválidas: ${JSON.stringify(tactical)}`);
-if (legendAndBuff.zones!==4||legendAndBuff.arenas!==2||legendAndBuff.capture!==15||!legendAndBuff.blind) throw new Error(`regiões de buff/cegueira inválidas: ${JSON.stringify(legendAndBuff)}`);
-if (legendAndBuff.procChance!==.40||legendAndBuff.procTotal!==.40||legendAndBuff.legendLevel!==1||legendAndBuff.legendHp<1500||legendAndBuff.legendCap!==.10) throw new Error(`Néfal não respeita poder/progressão/procs: ${JSON.stringify(legendAndBuff)}`);
+if (legendAndBuff.zones!==4||legendAndBuff.jungles!==2||legendAndBuff.oldArenas!==0||legendAndBuff.capture!==15||legendAndBuff.blind||!legendAndBuff.buff1Active) throw new Error(`regiões/buffs novos inválidos: ${JSON.stringify(legendAndBuff)}`);
+if (JSON.stringify(legendAndBuff.b1)!=='[0.12,0.1]'||JSON.stringify(legendAndBuff.b2)!=='[0.12,0.12]'||legendAndBuff.b3!==.006||JSON.stringify(legendAndBuff.b4)!=='[0.08,0.1]') throw new Error(`estatísticas dos buffs inválidas: ${JSON.stringify(legendAndBuff)}`);
+if (legendAndBuff.procChance!==.40||legendAndBuff.procTotal!==.40||legendAndBuff.legendLevel!==1||legendAndBuff.legendHp!==1150||legendAndBuff.legendCap!==.10) throw new Error(`Néfal não respeita poder/progressão/procs: ${JSON.stringify(legendAndBuff)}`);
 if (state.matchTime < 22 || state.livingUnits === 0) throw new Error('primeira onda não entrou em combate');
 if (byId('simSpeedControls').hidden) throw new Error('controles de velocidade permaneceram ocultos');
 if (fullscreenRequests !== 0) throw new Error(`fullscreen foi solicitado automaticamente ${fullscreenRequests} vez(es)`);
 const mapSource=fs.readFileSync(path.join(root,'moba-square-v2.js'),'utf8');
 if (/\[-1\.5,-\.5,\.5,1\.5\].*strokeRoute/.test(mapSource)) throw new Error('divisórias visuais das sub-lanes ainda são desenhadas');
 
-console.log(JSON.stringify({ ...state, fullscreenRequests }, null, 2));
+console.log(JSON.stringify({ ...state, strategy, balancedStrategy, minionPlan, tactical, legendAndBuff, fullscreenRequests }, null, 2));
