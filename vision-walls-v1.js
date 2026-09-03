@@ -16,7 +16,6 @@ const WALLS=[
  {id:'l4',x:5480,y:2680,w:660,h:280,a:-.08}
 ];
 const lastSeen={1:new Map(),'-1':new Map()};
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function corners(w){const c=Math.cos(w.a),s=Math.sin(w.a),hx=w.w/2,hy=w.h/2,local=[[-hx,-hy],[hx,-hy],[hx,hy],[-hx,hy]];return local.map(([x,y])=>({x:w.x+x*c-y*s,y:w.y+x*s+y*c}))}
 function orient(a,b,c){return(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)}
 function onSeg(a,b,p){return p.x>=Math.min(a.x,b.x)-.001&&p.x<=Math.max(a.x,b.x)+.001&&p.y>=Math.min(a.y,b.y)-.001&&p.y<=Math.max(a.y,b.y)+.001}
@@ -35,6 +34,10 @@ function drawWalls(){ctx.save();ctx.setTransform(map.zoom,0,0,map.zoom,-map.came
 const baseDrawUnit=drawUnit;drawUnit=function(u,t){if(u?.side===-1&&!isVisibleTo(1,u))return;baseDrawUnit(u,t)};
 const baseDraw=draw;draw=function(t){baseDraw(t);drawWalls()};
 const tactical=window.SL_TACTICAL_TARGETING;
-if(tactical){const oldClicked=tactical.clickedTarget;tactical.clickedTarget=function(world){const target=oldClicked(world);if(target?.kind==='unit'){const u=units.find(x=>!x.dead&&x.id===target.unitId);if(u&&u.side===-1&&!isVisibleTo(1,u))return null}return target}}
+if(tactical){
+ const oldClicked=tactical.clickedTarget,oldHandle=tactical.handleMapTap;
+ tactical.clickedTarget=function(world){const target=oldClicked(world);if(target?.kind==='unit'){const u=units.find(x=>!x.dead&&x.id===target.unitId);if(u&&u.side===-1&&!isVisibleTo(1,u))return null}return target};
+ tactical.handleMapTap=function(tap){if(gameMode==='robot')return false;const target=tactical.clickedTarget(tap.world);if(!target)return false;tactical.commandTarget(target);return true}
+}
 window.SL_VISION={version:1,walls:WALLS,blocked,isPointVisible,isVisibleTo,seenRecently,visibleEnemies,lastSeenInfo,health(){return{loaded:true,walls:WALLS.length,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
 })();
