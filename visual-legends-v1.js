@@ -86,7 +86,7 @@ function drawVesper(u,t,p){
    const taper=1-i/16,x=-dir*(i*9-26-dashFlash*8),y=7+Math.sin(t*waveSpeed+u.anim-i*.66)*6.5-i*1.8;
    points.push([x,y,Math.max(3.5,8.5*taper)])
  }
- if(dashFlash>0||maxSpeed){ctx.save();ctx.globalAlpha=(dashFlash*.42)+(maxSpeed?.08:0);ctx.strokeStyle=p[2];ctx.lineWidth=10;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x-dir*(12+dashFlash*18),y+4):ctx.moveTo(x-dir*(12+dashFlash*18),y+4));ctx.stroke();ctx.restore()}
+ if(dashFlash>0||maxSpeed){ctx.save();ctx.globalAlpha=(dashFlash*.42)+(maxSpeed?0.08:0);ctx.strokeStyle=p[2];ctx.lineWidth=10;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x-dir*(12+dashFlash*18),y+4):ctx.moveTo(x-dir*(12+dashFlash*18),y+4));ctx.stroke();ctx.restore()}
  ctx.strokeStyle='rgba(5,5,12,.5)';ctx.lineWidth=17;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x+3,y+5):ctx.moveTo(x+3,y+5));ctx.stroke();
  points.slice().reverse().forEach(([x,y,r],j)=>{ellipse(x,y,r,r*.7,j%2?p[0]:p[1],p[2],1.15);if(j%3===0){ctx.fillStyle='rgba(255,240,189,.38)';ctx.beginPath();ctx.arc(x-dir*2,y-2,1.3,0,Math.PI*2);ctx.fill()}});
  const hx=dir*(38+strike*12+dashFlash*10),hy=-3+step*2;
