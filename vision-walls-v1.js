@@ -130,3 +130,7 @@ const oldHandle=tactical.handleUnit;tactical.handleUnit=function(u,dt,t){if(hand
 
 window.SL_VISION={version:2,walls:WALLS,blocked,blockingWall,pointInside,routeWaypoint,isPointVisible,isVisibleTo,seenRecently,visibleEnemies,lastSeenInfo:(side,id)=>lastSeen[side]?.get(id)||null,health(){return{loaded:true,physical:true,walls:WALLS.length,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
 })();
+
+/* Carrega o executor final depois que o árbitro estiver disponível. O próprio
+   módulo espera/reintenta até a cadeia de IA terminar de inicializar. */
+(function(){if(document.querySelector('script[data-sl-legend-authority]'))return;const s=document.createElement('script');s.src='legend-authority-lock-v1.js?v=20260903-single-authority1';s.async=false;s.dataset.slLegendAuthority='1';document.head.appendChild(s)})();
