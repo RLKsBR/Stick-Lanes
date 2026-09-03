@@ -72,18 +72,57 @@ async function runCase(name,viewport){
 
   const targeting=await page.evaluate(()=>{
     gameMode='pve';
-    const probe={name:'Lenda QA',role:'unique',hp:900,def:20,atk:20,speed:5,range:1.2,rate:1,cost:10,gen:1,special:{legend:true},ability:{name:'QA',desc:''}};
-    const legend=spawnUnit(1,0,'Medievais',probe),tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),world=SL_MOBA_SQUARE_V2.structurePos(tower);
-    SL_TACTICAL_TARGETING.handleMapTap({world,client:{x:200,y:180},canvas:{x:200,y:180}});
-    const towerChoices=document.querySelectorAll('#tacticalCommandMenu button').length;
-    document.querySelector('#tacticalCommandMenu button[data-group="legend"]')?.click();
-    const crossing=!!legend.tacticalWorld;
-    const buff=SL_MOBA_SQUARE_V2.buffZones[0];SL_TACTICAL_TARGETING.handleMapTap({world:{x:buff.x,y:buff.y},client:{x:210,y:190},canvas:{x:210,y:190}});
-    const buffChoices=document.querySelectorAll('#tacticalCommandMenu button').length;
-    document.querySelector('#tacticalCommandMenu button[data-group="legend"]')?.click();
-    gameMode='robot';return{towerChoices,buffChoices,crossing,buffCommand:legend.tacticalDestination?.kind}
+    const map=SL_MOBA_SQUARE_V2,api=SL_TACTICAL_TARGETING;
+    const troopData={name:'Tropa QA',role:'fighter',hp:500,def:20,atk:20,speed:5,range:1.2,rate:1,cost:10,gen:1,special:{},ability:{name:'QA',desc:''}};
+    const enemyData={...troopData,name:'Alvo QA'};
+    const troop=spawnUnit(1,1,'Medievais',troopData);troop.x=7100;troop.sub=0;troop.subTarget=0;
+    const legend=units.find(u=>!u.dead&&u.side===1&&u.special?.legend)||spawnUnit(1,0,'Lendas',SL_LEGENDS_API.get('nefal'),{legend:true});
+    delete legend.tacticalWorld;delete legend.tacticalDestination;delete legend.manualBuff;delete legend.manualTargetId;delete legend.manualUnitTargetId;delete legend.manualHold;legend.lane=0;legend.x=6500;legend.sub=0;legend.subTarget=0;
+
+    // 1) Torre inimiga na lane: tropa da lane + Lenda devem focar automaticamente.
+    const tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary&&api.clickedTarget(map.structurePos(s))?.kind==='structure')||structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary);
+    const towerTarget={kind:'structure',structure:tower,lane:tower.lane,x:tower.x,t:(tower.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]),world:map.structurePos(tower)};
+    api.commandTarget(towerTarget);
+    const towerTroop=troop.manualTargetId===tower.id;
+    const towerLegend=legend.manualTargetId===tower.id||legend.tacticalDestination?.kind==='structure';
+
+    // 2) Jungle: só a Lenda muda de ordem. A tropa deve continuar com a torre.
+    const buff=map.buffZones.find(z=>z.id==='buff1')||map.buffZones[0];
+    api.handleMapTap({world:{x:buff.x,y:buff.y},client:{x:210,y:190},canvas:{x:210,y:190}});
+    const jungleLegend=legend.tacticalDestination?.kind==='buff';
+    const jungleTroopUntouched=troop.manualTargetId===tower.id&&!troop.manualBuff&&!troop.tacticalWorld;
+
+    // 3) Clicar numa Lenda inimiga na lane: tropa + Lenda focam ela.
+    const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special?.legend)||spawnUnit(-1,1,'Lendas',SL_LEGENDS_API.get('vesper'),{legend:true});
+    delete enemyLegend.tacticalWorld;delete enemyLegend.tacticalDestination;delete enemyLegend.manualBuff;enemyLegend.lane=1;enemyLegend.x=7800;enemyLegend.sub=0;enemyLegend.subTarget=0;
+    const enemyLegendWorld=map.unitPos(enemyLegend);api.handleMapTap({world:enemyLegendWorld,client:{x:220,y:200},canvas:{x:220,y:200}});
+    const legendTargetTroop=troop.manualUnitTargetId===enemyLegend.id;
+    const legendTargetLegend=legend.manualUnitTargetId===enemyLegend.id||legend.tacticalDestination?.unitId===enemyLegend.id;
+
+    // 4) Clicar numa tropa inimiga: o mesmo foco conjunto.
+    const enemyTroop=spawnUnit(-1,1,'Alienígenas',enemyData);enemyTroop.x=8300;enemyTroop.sub=2;enemyTroop.subTarget=2;
+    const enemyTroopWorld=map.unitPos(enemyTroop);api.handleMapTap({world:enemyTroopWorld,client:{x:230,y:210},canvas:{x:230,y:210}});
+    const troopTargetTroop=troop.manualUnitTargetId===enemyTroop.id;
+    const troopTargetLegend=legend.manualUnitTargetId===enemyTroop.id||legend.tacticalDestination?.unitId===enemyTroop.id;
+
+    // 5) Chão vazio da lane: ambos recebem ordem de movimento para o ponto.
+    let blankTarget=null;
+    for(const q of [.12,.18,.24,.31,.38,.44]){const p=map.routePoint(1,q),candidate=api.clickedTarget(p);if(candidate?.kind==='point'){blankTarget=candidate;break}}
+    if(!blankTarget){const q=.16,p=map.routePoint(1,q);blankTarget={kind:'point',lane:1,x:BASE_X[1]+q*(BASE_X[-1]-BASE_X[1]),t:q,world:p}}
+    api.commandTarget(blankTarget);
+    const blankTroop=!!troop.manualHold&&troop.manualHold.lane===1;
+    const blankLegend=!!legend.manualHold||legend.tacticalDestination?.kind==='point';
+
+    // 6) Clicar numa Lenda dentro da jungle continua sendo só Lenda.
+    enemyLegend.tacticalWorld={x:buff.x,y:buff.y,a:0};enemyLegend.tacticalDestination=null;enemyLegend.manualBuff=buff.id;
+    troop.manualHold={lane:1,x:blankTarget.x,world:blankTarget.world};delete troop.manualUnitTargetId;
+    api.handleMapTap({world:{x:buff.x,y:buff.y},client:{x:240,y:220},canvas:{x:240,y:220}});
+    const jungleEnemyLegendOnly=(legend.tacticalDestination?.kind==='unit'&&legend.tacticalDestination?.unitId===enemyLegend.id)&&!troop.manualUnitTargetId&&!!troop.manualHold;
+
+    const health=api.health();gameMode='robot';
+    return{towerTroop,towerLegend,jungleLegend,jungleTroopUntouched,legendTargetTroop,legendTargetLegend,troopTargetTroop,troopTargetLegend,blankTroop,blankLegend,jungleEnemyLegendOnly,health}
   });
-  if(targeting.towerChoices!==2||targeting.buffChoices!==1||!targeting.crossing||targeting.buffCommand!=='buff')throw new Error(`${name}: menu contextual inválido ${JSON.stringify(targeting)}`);
+  if(!targeting.towerTroop||!targeting.towerLegend||!targeting.jungleLegend||!targeting.jungleTroopUntouched||!targeting.legendTargetTroop||!targeting.legendTargetLegend||!targeting.troopTargetTroop||!targeting.troopTargetLegend||!targeting.blankTroop||!targeting.blankLegend||!targeting.jungleEnemyLegendOnly||!targeting.health?.directCommands||!targeting.health?.jungleLegendOnly)throw new Error(`${name}: controles diretos inválidos ${JSON.stringify(targeting)}`);
 
   // 20x também precisa continuar responsivo; aqui já devem nascer ondas/unidades.
   await page.click('#simSpeedControls button[data-speed="20"]',{timeout:3000});
@@ -101,7 +140,7 @@ async function runCase(name,viewport){
   if(state2.legends!==2)throw new Error(`${name}: deveria existir uma Lenda viva por lado, recebeu ${state2.legends}`);
 
   if(pageErrors.length)throw new Error(`${name}: ${pageErrors.join(' | ')}`);
-  console.log(JSON.stringify({name,clickMs:Date.now()-clickStart,state1,state2},null,2));
+  console.log(JSON.stringify({name,clickMs:Date.now()-clickStart,state1,targeting,state2},null,2));
   await context.close();
 }
 
