@@ -306,10 +306,10 @@ const tactical = vm.runInContext(`(()=>{
   const legend=units.find(u=>!u.dead&&u.side===1&&u.special.legend)||spawnUnit(1,0,'Medievais',{...base,name:'Lenda de teste',role:'unique',special:{legend:true}});legend.x=6500;
   const tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),towerTarget=SL_TACTICAL_TARGETING.clickedTarget(SL_MOBA_SQUARE_V2.structurePos(tower));
   const troopsOk=SL_TACTICAL_TARGETING.commandTroops(towerTarget)&&troop.manualTargetId===tower.id;
-  const legendOk=SL_TACTICAL_TARGETING.commandLegend(towerTarget)&&!!legend.tacticalWorld;
+  const legendOk=SL_TACTICAL_TARGETING.commandLegend(towerTarget)&&(legend.manualTargetId===tower.id||!!legend.tacticalWorld);
   const buff=SL_MOBA_SQUARE_V2.buffZones[0],buffTarget=SL_TACTICAL_TARGETING.clickedTarget({x:buff.x,y:buff.y});SL_TACTICAL_TARGETING.commandLegend(buffTarget);
   const before=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);SL_TACTICAL_TARGETING.handleUnit(legend,.5,simTime);const after=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);
-  const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special.legend)||spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;attack(enemyLegend,legend,simTime+1);
+  const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special.legend)||spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;legend.special.dodge=0;attack(enemyLegend,legend,simTime+1);
   const minion={minion:true,special:{}},normalTroop={minion:false,special:{}},plainLegend={minion:false,special:{legend:true}};
   const normal=[SL_TURRETS_V1.priorityFor(minion,false),SL_TURRETS_V1.priorityFor(normalTroop,false),SL_TURRETS_V1.priorityFor(plainLegend,false)];
   const defensive=[SL_TURRETS_V1.priorityFor(plainLegend,true),SL_TURRETS_V1.priorityFor(normalTroop,true),SL_TURRETS_V1.priorityFor(minion,true)];
