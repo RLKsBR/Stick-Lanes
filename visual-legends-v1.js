@@ -62,21 +62,17 @@ function drawKarkinos(u,t,p){
  ellipse(0,12,50,30,'#071419');
  const armor=metal(p,-52,-48,48,28);
  ctx.fillStyle=armor;ctx.strokeStyle=shellRatio>0?p[2]:'#3c5e63';ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(-49,8);ctx.quadraticCurveTo(-46,-34,-19,-45);ctx.quadraticCurveTo(0,-53,20,-45);ctx.quadraticCurveTo(48,-34,51,8);ctx.lineTo(35,30);ctx.lineTo(-35,30);ctx.closePath();ctx.fill();ctx.stroke();
- /* placas sobrepostas deixam a carapaça legível e mostram desgaste */
  ctx.strokeStyle=shellRatio>.35?'rgba(229,255,244,.48)':'rgba(105,142,145,.45)';ctx.lineWidth=2.2;
  for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*15,-37+Math.abs(i)*3);ctx.quadraticCurveTo(i*17,-7,i*16,23);ctx.stroke()}
  ctx.beginPath();ctx.moveTo(-39,-7);ctx.quadraticCurveTo(0,7,39,-7);ctx.stroke();
  if(shellRatio>0){ctx.save();ctx.globalAlpha=.18+.28*shellRatio;ctx.strokeStyle=p[2];ctx.lineWidth=6;ctx.beginPath();ctx.ellipse(0,-7,52,39,0,0,Math.PI*2);ctx.stroke();ctx.restore()}
  if(shellRatio<.45){ctx.strokeStyle='#071012';ctx.lineWidth=3;for(const s of [-1,1]){ctx.beginPath();ctx.moveTo(s*10,-38);ctx.lineTo(s*18,-20);ctx.lineTo(s*9,-8);ctx.lineTo(s*22,7);ctx.stroke()}}
- /* olhos pequenos e baixos: o volume principal continua sendo a carapaça */
  line(-16,-28,-20,-40,p[1],3);line(16,-28,20,-40,p[1],3);ellipse(-21,-42,4.2,4.2,p[3]);ellipse(21,-42,4.2,4.2,p[3]);
- /* pinça principal: grande, aberta quando pronta e fechando no ataque */
  const frontRoot=dir*31,frontX=dir*(62+strike*12),jaw=pinchReady?15-strike*10:8;
  line(frontRoot,-5,dir*49,-15,p[0],14);ellipse(frontX,-16,25+strike*3,18,armor,pinchReady?p[3]:p[2],2.6);
  ctx.fillStyle='#061014';ctx.beginPath();ctx.moveTo(frontX-dir*2,-16);ctx.lineTo(frontX+dir*26,-16-jaw);ctx.lineTo(frontX+dir*11,-5);ctx.closePath();ctx.fill();
  ctx.beginPath();ctx.moveTo(frontX-dir*2,-14);ctx.lineTo(frontX+dir*26,-14+jaw);ctx.lineTo(frontX+dir*11,-25);ctx.closePath();ctx.fill();
  if(pinchReady){ctx.save();ctx.globalAlpha=.55+.25*Math.sin(t*5);ctx.strokeStyle=p[3];ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(frontX,-16,29,-1.1,1.1);ctx.stroke();ctx.restore()}
- /* pinça secundária compacta, feita para estabilizar e segurar a linha */
  const back=-dir*51;line(-dir*30,3,-dir*43,1,p[0],10);ellipse(back,-1,16,12,p[1],p[2],2);ctx.fillStyle='#061014';ctx.beginPath();ctx.moveTo(back-dir*2,-1);ctx.lineTo(back-dir*17,-9);ctx.lineTo(back-dir*8,1);ctx.lineTo(back-dir*17,8);ctx.closePath();ctx.fill();
  if(reflect){ctx.save();ctx.globalAlpha=.34+.18*Math.sin(t*4);ctx.strokeStyle='#d9fff7';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(0,-5,57+i*7,t*.45+i*.8,t*.45+i*.8+1.55);ctx.stroke()}ctx.restore()}
  if(strike){ctx.strokeStyle=p[2];ctx.lineWidth=3;ctx.globalAlpha=strike*.78;for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(frontX+dir*20,-15,14+i*11,-1.1,1.1);ctx.stroke()}ctx.globalAlpha=1}
@@ -90,23 +86,19 @@ function drawVesper(u,t,p){
    const taper=1-i/16,x=-dir*(i*9-26-dashFlash*8),y=7+Math.sin(t*waveSpeed+u.anim-i*.66)*6.5-i*1.8;
    points.push([x,y,Math.max(3.5,8.5*taper)])
  }
- /* rastro de rasante: aparece só quando ela realmente acabou de avançar */
  if(dashFlash>0||maxSpeed){ctx.save();ctx.globalAlpha=(dashFlash*.42)+(maxSpeed?.08:0);ctx.strokeStyle=p[2];ctx.lineWidth=10;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x-dir*(12+dashFlash*18),y+4):ctx.moveTo(x-dir*(12+dashFlash*18),y+4));ctx.stroke();ctx.restore()}
  ctx.strokeStyle='rgba(5,5,12,.5)';ctx.lineWidth=17;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x+3,y+5):ctx.moveTo(x+3,y+5));ctx.stroke();
  points.slice().reverse().forEach(([x,y,r],j)=>{ellipse(x,y,r,r*.7,j%2?p[0]:p[1],p[2],1.15);if(j%3===0){ctx.fillStyle='rgba(255,240,189,.38)';ctx.beginPath();ctx.arc(x-dir*2,y-2,1.3,0,Math.PI*2);ctx.fill()}});
  const hx=dir*(38+strike*12+dashFlash*10),hy=-3+step*2;
  ctx.fillStyle=metal(p);ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hx+dir*27,hy);ctx.lineTo(hx-dir*3,hy-18);ctx.lineTo(hx-dir*18,hy);ctx.lineTo(hx-dir*3,hy+18);ctx.closePath();ctx.fill();ctx.stroke();
- /* barbatanas em foice, inclinadas para frente quando o rasante está armado */
  for(const s of [-1,1]){ctx.save();ctx.translate(dir*3,s*14);ctx.rotate(s*(.32+step*.04)-dir*dashCharge*.025);ctx.fillStyle=s>0?p[2]:p[1];ctx.globalAlpha=.84;ctx.beginPath();ctx.moveTo(-29,0);ctx.quadraticCurveTo(0,s*(27+dashCharge*2),33,0);ctx.quadraticCurveTo(0,s*10,-29,0);ctx.fill();ctx.restore()}ctx.globalAlpha=1;
  ellipse(hx+dir*9,hy-4,3.2,3.2,p[3]);
- /* anel do Eclipse também funciona como contador dos três ataques que antecedem o rasante */
  ctx.strokeStyle=p[2];ctx.lineWidth=4;ctx.beginPath();ctx.arc(hx-dir*9,hy,22,t*.35,t*.35+Math.PI*1.6);ctx.stroke();
  for(let i=0;i<4;i++){
    const a=-Math.PI*.72+i*Math.PI*.48,x=hx-dir*9+Math.cos(a)*26,y=hy+Math.sin(a)*26,filled=i<dashCharge;
    ellipse(x,y,filled?3.8:2.4,filled?3.8:2.4,filled?p[3]:'rgba(255,255,255,.22)');
  }
  if(dashCharge===3){ctx.save();ctx.globalAlpha=.38+.25*Math.sin(t*7);ctx.strokeStyle=p[3];ctx.lineWidth=2;ctx.beginPath();ctx.arc(hx-dir*9,hy,31,0,Math.PI*2);ctx.stroke();ctx.restore()}
- /* veneno carregado fica visível em duas bolsas atrás da cabeça */
  const venom=poisonReady?'#9cff72':'#315338';ellipse(hx-dir*11,hy-10,5.2,7.4,venom,poisonReady?'#d9ffbf':null,1.2);ellipse(hx-dir*15,hy+8,4.5,6.4,venom,poisonReady?'#d9ffbf':null,1.1);
  if(poisonReady){ctx.save();ctx.globalAlpha=.18+.12*Math.sin(t*5);ctx.fillStyle='#9cff72';ctx.beginPath();ctx.arc(hx-dir*11,hy,19,0,Math.PI*2);ctx.fill();ctx.restore()}
  ctx.fillStyle=p[3];ctx.beginPath();ctx.moveTo(hx+dir*28,hy);ctx.lineTo(hx+dir*38,hy-4);ctx.lineTo(hx+dir*38,hy+4);ctx.closePath();ctx.fill();
