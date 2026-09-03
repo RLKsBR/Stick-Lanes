@@ -23,11 +23,15 @@ async function runCase(name,viewport){
     ready:document.querySelector('#bootStatus')?.textContent||'',
     disabled:document.querySelector('#menuRobots')?.disabled,
     legacyCamera:!!window.SL_CAMERA_V5,
-    squareMap:!!window.SL_MOBA_SQUARE_V2
+    squareMap:!!window.SL_MOBA_SQUARE_V2,
+    legendCards:document.querySelectorAll('#legendPool .legendCard').length,
+    legendPreviews:document.querySelectorAll('#legendPool canvas').length,
+    strategyPresets:document.querySelectorAll('#strategyPresets button').length
   }));
   if(before.disabled)throw new Error(`${name}: menuRobots disabled`);
   if(before.legacyCamera)throw new Error(`${name}: mapa/câmera legado ainda carregado`);
   if(!before.squareMap)throw new Error(`${name}: mapa quadrado não carregou`);
+  if(before.legendCards!==3||before.legendPreviews!==3||before.strategyPresets!==4)throw new Error(`${name}: pré-estratégia/Lendas incompletas ${JSON.stringify(before)}`);
 
   const clickStart=Date.now();
   await page.click('#menuRobots',{timeout:3000});
@@ -87,12 +91,14 @@ async function runCase(name,viewport){
   const state2=await page.evaluate(()=>({
     timer:document.querySelector('#matchTimer')?.textContent,
     units:typeof units!=='undefined'?units.length:null,
+    legends:typeof units!=='undefined'?units.filter(u=>!u.dead&&u.special?.legend).length:null,
     health:window.SL_RUNTIME_HEALTH?.snapshot?.()||null,
     error:window.SL_LAST_RUNTIME_ERROR||null
   }));
   if(state2.error)throw new Error(`${name}: erro em 20x ${JSON.stringify(state2.error)}`);
   if(!state2.health||state2.health.lastFrameAgeMs>700)throw new Error(`${name}: travou em 20x`);
   if((state2.units??0)<=0)throw new Error(`${name}: simulação 20x não gerou unidades`);
+  if(state2.legends!==2)throw new Error(`${name}: deveria existir uma Lenda viva por lado, recebeu ${state2.legends}`);
 
   if(pageErrors.length)throw new Error(`${name}: ${pageErrors.join(' | ')}`);
   console.log(JSON.stringify({name,clickMs:Date.now()-clickStart,state1,state2},null,2));

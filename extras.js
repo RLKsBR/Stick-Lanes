@@ -23,7 +23,8 @@ saveBtn.onclick=()=>{
   if(chosen.length!==8){say('Escolha 8 unidades antes de salvar.');return}
   const name=(nameInput.value||'Composição '+(read().length+1)).trim().slice(0,40);
   const list=read();
-  const entry={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name,f1:f1.value,f2:f2.value,keys:[...chosen],savedAt:Date.now()};
+  const entry={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),name,f1:f1.value,f2:f2.value,keys:[...chosen],
+    strategy:setupWeights(),legendId:selectedLegendId,legendFocus:Number(document.querySelector('#legendFocus')?.value)||1,savedAt:Date.now()};
   const same=list.findIndex(x=>x.name.toLowerCase()===name.toLowerCase());
   if(same>=0)list[same]=entry;else list.push(entry);
   write(list.slice(-50));refresh();select.value=String(Math.max(0,(same>=0?same:list.length-1)));nameInput.value='';say('Composição salva neste aparelho.');
@@ -34,6 +35,9 @@ loadBtn.onclick=()=>{
   f1.value=c.f1;f2.value=c.f2;renderPool();
   const keys=allVisibleKeys(),buttons=[...document.querySelectorAll('.unitBtn')];
   c.keys.forEach(k=>{const i=keys.indexOf(k);if(i>=0&&buttons[i])buttons[i].click()});
+  if(c.strategy)syncStrategySetup(c.strategy);
+  if(c.legendId&&SL_LEGENDS.some(x=>x.id===c.legendId)){selectedLegendId=c.legendId;document.querySelectorAll('.legendCard').forEach(card=>card.classList.toggle('selected',card.dataset.legendId===selectedLegendId))}
+  if(Number.isInteger(c.legendFocus)){const focus=document.querySelector('#legendFocus');if(focus)focus.value=String(c.legendFocus)}
   nameInput.value=c.name;say('Composição carregada.');
 };
 

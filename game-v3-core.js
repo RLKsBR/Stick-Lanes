@@ -25,6 +25,9 @@ const BASE_HP=6000,WAVE_INTERVAL=22;
 const MINION_WAVE_FORMATION=[['tank',0],['fighter',-1],['fighter',1],['ranged',-2],['ranged',0],['ranged',2]];
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
+let selectedLegendId='nefal',selectedLegendFocus=1;
+const sideSpawnWeights={1:[1,1,1],'-1':[1,1,1]},spawnStrategyState={1:{total:0,counts:[0,0,0]},'-1':{total:0,counts:[0,0,0]}},
+      sideLegendIds={1:'nefal','-1':'karkinos'},sideLegendFocus={1:1,'-1':1};
 let enemyFactions=[],enemyLoadout=[],sideFactions={1:[], '-1':[]};
 const CELL_SIZE=520;
 let unitSeq=0,structureSeq=0,showTowerRanges=true,unitIndex={1:[[],[],[]],'-1':[[],[],[]]},
@@ -87,13 +90,45 @@ function renderPool(){
 }
 f1.onchange=f2.onchange=renderPool;renderPool();
 
+function safeWeights(values){
+ let out=values.map(v=>clamp(Math.round(Number(v)||0),0,9));return out.some(Boolean)?out:[1,1,1]
+}
+function setupWeights(){return safeWeights([$('#weightTop')?.value,$('#weightMid')?.value,$('#weightBot')?.value])}
+function weightText(weights){let sum=weights.reduce((a,b)=>a+b,0);return weights.map((v,i)=>`${['Top','Mid','Bot'][i]} ${Math.round(v/sum*100)}%`).join(' • ')}
+function syncStrategySetup(weights=setupWeights()){
+ weights=safeWeights(weights);['#weightTop','#weightMid','#weightBot'].forEach((id,i)=>{let input=$(id);if(input)input.value=weights[i]});
+ let summary=$('#weightSummary');if(summary)summary.textContent=weightText(weights);
+ document.querySelectorAll('#strategyPresets button').forEach(button=>button.classList.toggle('active',button.dataset.weights===weights.join(',')))
+}
+function renderLegendPool(){
+ let holder=$('#legendPool');if(!holder||!window.SL_LEGENDS)return;holder.innerHTML='';
+ SL_LEGENDS.forEach(legend=>{
+   let card=document.createElement('button');card.type='button';card.className='legendCard';card.dataset.legendId=legend.id;
+   card.innerHTML=`<canvas class="legendPreview" width="360" height="180" data-legend-preview="${legend.id}" aria-hidden="true"></canvas><span class="legendCopy"><b>${legend.name}</b><em>${legend.title}</em><small>${legend.fantasy}</small><small class="legendRole">${legend.playstyle}</small></span><span class="legendBattleBadge">LENDA</span>`;
+   card.onclick=()=>{selectedLegendId=legend.id;holder.querySelectorAll('.legendCard').forEach(x=>x.classList.toggle('selected',x===card))};
+   if(legend.id===selectedLegendId)card.classList.add('selected');holder.appendChild(card)
+ });
+ window.SL_LEGEND_VISUALS?.drawPreviews?.()
+}
+document.querySelectorAll('#strategyPresets button').forEach(button=>button.onclick=()=>syncStrategySetup(button.dataset.weights.split(',').map(Number)));
+['#weightTop','#weightMid','#weightBot'].forEach(id=>$(id)?.addEventListener('input',()=>syncStrategySetup()));
+syncStrategySetup([1,1,1]);renderLegendPool();
+
 function byKey(k){let[fac,n]=k.split('|');return{fac,u:FACTIONS[fac].find(x=>x.name===n)}}
 function randomFactionPair(exclude=[]){
  let available=SL_FACTION_ORDER.filter(f=>!exclude.includes(f));if(available.length<2)available=[...SL_FACTION_ORDER];
  return available.sort(()=>Math.random()-.5).slice(0,2)
 }
+function randomSpawnWeights(){return[[1,1,1],[3,1,1],[1,3,1],[1,1,3],[2,2,1],[2,1,2]][Math.floor(Math.random()*6)].slice()}
+function configureBattlePlan(mode){
+ sideSpawnWeights[1]=mode==='pve'?setupWeights():randomSpawnWeights();sideSpawnWeights[-1]=randomSpawnWeights();
+ selectedLegendFocus=clamp(Number($('#legendFocus')?.value)||0,0,2);
+ sideLegendIds[1]=mode==='pve'?selectedLegendId:SL_LEGENDS[Math.floor(Math.random()*SL_LEGENDS.length)].id;
+ sideLegendIds[-1]=SL_LEGENDS[Math.floor(Math.random()*SL_LEGENDS.length)].id;
+ sideLegendFocus[1]=mode==='pve'?selectedLegendFocus:Math.floor(Math.random()*3);sideLegendFocus[-1]=Math.floor(Math.random()*3)
+}
 function launchBattle(mode,pair,deck){
- gameMode=mode;f1.value=pair[0];f2.value=pair[1];loadout=deck;
+ gameMode=mode;f1.value=pair[0];f2.value=pair[1];loadout=deck;configureBattlePlan(mode);
  mainMenu.hidden=true;setup.hidden=true;gameUI.hidden=false;buildUI();reset()
 }
 $('#menuPlay').onclick=()=>{mainMenu.hidden=true;setup.hidden=false;gameMode='pve';renderPool()};
@@ -137,6 +172,7 @@ function buildUI(){
    })
  }
  lc.classList.toggle('aiControlled',assisted)
+ let activePlan=$('#activePlan');if(activePlan){let legend=SL_LEGENDS_API.get(sideLegendIds[1]);activePlan.innerHTML=`<b>${weightText(sideSpawnWeights[1])}</b><span>Lenda: ${legend.name} • foco ${['Top','Mid','Bot'][sideLegendFocus[1]]}</span>`}
 }
 
 function syncOrderButtons(side=1){
@@ -176,7 +212,7 @@ canvas.addEventListener('pointerup',e=>{
 function reset(){
  units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;simTime=0;timeScale=1;waveClock=0;waveIndex=0;unitSeq=0;setCamera(0);
  Object.keys(spawnCd).forEach(k=>delete spawnCd[k]);
- for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0}
+ for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0;spawnStrategyState[side]={total:0,counts:[0,0,0]}}
  makeStructures();
  enemyFactions=randomFactionPair([f1.value,f2.value]);
  enemyLoadout=buildAIDeck(enemyFactions);
@@ -229,11 +265,16 @@ function canSpawnUnit(side,u){
  let cap=u.special.maxCopies||(u.special.unique?1:Infinity);
  return units.filter(x=>!x.dead&&x.side===side&&x.name===u.name).length<cap
 }
+function nextStrategyLane(side){
+ let weights=safeWeights(sideSpawnWeights[side]),sum=weights.reduce((a,b)=>a+b,0),state=spawnStrategyState[side],best=-Infinity,lane=1;
+ for(let i=0;i<3;i++){if(!weights[i])continue;let deficit=(state.total+1)*weights[i]/sum-state.counts[i];if(deficit>best){best=deficit;lane=i}}
+ state.total++;state.counts[lane]++;return lane
+}
 function spawnPlayer(i){
  if(gameMode==='robot')return;
  let{fac,u}=loadout[i],now=simTime,k='p'+i;
  if(gold<u.cost||now<(spawnCd[k]||0)||!canSpawnUnit(1,u))return;
- gold-=u.cost;spawnCd[k]=now+u.gen;spawnUnit(1,selectedLane,fac,u)
+ let lane=nextStrategyLane(1);selectedLane=lane;gold-=u.cost;spawnCd[k]=now+u.gen;spawnUnit(1,lane,fac,u)
 }
 function unitValue(u){let dps=u.atk/Math.max(.45,u.rate),ehp=u.hp*(1+u.def/130);return Math.sqrt(dps*ehp)*(1+u.range*.018)/(Math.pow(u.cost,0.55)*(1+u.gen/220))}
 function sideGold(side){return side===1?gold:enemyGold}
@@ -279,6 +320,7 @@ function runSideAI(side,t){
  spendSideGold(side,pick.u.cost);ready[key]=t+pick.u.gen;usage[key]=(usage[key]||0)+1;spawnUnit(side,lane,pick.fac,pick.u)
 }
 function spawnWave(side){
+ if(waveIndex===0)spawnLegend(side);
  const fac=sideFactions[side][waveIndex%2];
  for(let lane=0;lane<3;lane++){
    MINION_WAVE_FORMATION.forEach(([type,sub])=>{
@@ -288,6 +330,10 @@ function spawnWave(side){
      spawnUnit(side,lane,fac,u,{minion:true,minionType:type,sub})
    })
  }
+}
+function spawnLegend(side){
+ const legend=SL_LEGENDS_API.get(sideLegendIds[side]);if(units.some(u=>!u.dead&&u.side===side&&u.special.legend))return null;
+ const lane=sideLegendFocus[side],unit=spawnUnit(side,lane,'Lendas',legend,{legend:true});unit.legendHomeLane=lane;unit.legendEnteredAt=simTime;return unit
 }
 function simulationStep(dt){
  simTime+=dt;matchTime+=dt;income+=dt;waveClock+=dt;
@@ -521,7 +567,10 @@ function attack(a,b,t){
  if(a.fac==='Bestas Marinhas'||a.special.slow)b.slowUntil=Math.max(b.slowUntil,t+2.5);
  if(a.special.radiation)b.radiation=Math.min(.12,b.radiation+a.special.radiation);
  if(b.fac==='Cristalinos'&&a.hp>0){a.hp-=d*.08;if(a.hp<=0)killUnit(a,b,t)}
- if(a.special.splash||a.fac==='Elementais')nearbyUnits(b.side,b.lane,b.x,90).filter(v=>v!==b&&!v.dead&&dist(b,v)<90).forEach(v=>{v.hp-=d*.10;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)});
+ if(a.special.splash||a.fac==='Elementais'){
+   let splashPct=typeof a.special.splash==='number'?a.special.splash:.10;
+   nearbyUnits(b.side,b.lane,b.x,90).filter(v=>v!==b&&!v.dead&&dist(b,v)<90).forEach(v=>{v.hp-=d*splashPct;v.lastDamaged=t;if(v.hp<=0)killUnit(v,a,t)})
+ }
  if(a.fac==='Músicos'&&a.attackCount%4===3)units.filter(v=>!v.dead&&v.side===a.side&&v.lane===a.lane&&dist(a,v)<260).forEach(v=>v.musicUntil=Math.max(v.musicUntil,t+3));
  effects.push({type:'impact',x:b.x,y:yOf(b),t,color:attackColor(a)});
  if(a.range>4||a.role==='ranged'||a.role==='controller'||a.role==='support')effects.push({type:'beam',x1:a.x,y1:yOf(a)-18,x2:b.x,y2:yOf(b)-14,t,color:attackColor(a)});

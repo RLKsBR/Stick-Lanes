@@ -135,6 +135,7 @@ const byId = id => {
   'towerRanges', 'modeStatus', 'gold', 'playerBase', 'enemyBase', 'playerTowers',
   'enemyTowers', 'matchTimer', 'waveTimer', 'compName', 'saveComp', 'savedComps',
   'loadComp', 'deleteComp', 'compMessage', 'zoomBadge', 'bootStatus'
+  ,'weightTop','weightMid','weightBot','weightSummary','strategyPresets','legendFocus','legendPool','activePlan'
 ].forEach(byId);
 
 const hudActions = new FakeElement('div');
@@ -222,13 +223,13 @@ function run(file) {
 }
 
 const staticScripts = [
-  'factions-v3.js', 'minion-speed-v1.js', 'balance-patch-v3-3.js',
-  'game-v3-core.js', 'game-v3-visuals.js', 'extras.js',
+  'factions-v3.js', 'minion-speed-v1.js', 'balance-patch-v3-3.js', 'balance-patch-v3-4.js',
+  'legends-v1.js', 'game-v3-core.js', 'game-v3-visuals.js', 'extras.js',
   'map-sci-fi-v4.js', 'map-assets-v4.js', 'map-2_5d-v5.js',
   'map-layout-v5.js', 'movement-v6.js', 'minion-wave-v2.js',
   'turret-defense-v1.js', 'live-strategy-ai-v1.js',
   'visual-lote-01.js', 'visual-lote-02.js', 'visual-lote-03.js',
-  'visual-lote-04.js', 'visual-lote-05.js', 'visual-team-structures.js',
+  'visual-lote-04.js', 'visual-lote-05.js', 'visual-legends-v1.js', 'visual-team-structures.js',
   'visual-team-range.js', 'frontline-moba-v1.js', 'moba-square-v2.js',
   'tactical-targeting-v1.js',
   'mobile-landscape-v1.js', 'match-focus-v1.js'
@@ -243,6 +244,9 @@ while (dynamicScripts.length) {
 }
 
 if (byId('menuPlay').disabled || byId('menuRobots').disabled) throw new Error('menu está bloqueado antes do clique');
+if (byId('legendPool').children.length !== 3) throw new Error('seletor pré-jogo não criou as três Lendas');
+byId('legendPool').children[1].click();
+if (vm.runInContext('selectedLegendId',context)!=='karkinos') throw new Error('seleção de Lenda não foi registrada');
 byId('menuRobots').click();
 const globalAttack=byId('laneControls').children[0].querySelectorAll('button').find(button=>button.dataset.v==='attack');
 if(!globalAttack)throw new Error('comando global Atacar não foi criado');
@@ -278,8 +282,16 @@ const state = vm.runInContext(`({
     })
   })),
   aiAdjustments:SL_LIVE_STRATEGY_AI.getMemory().totalAdjustments,
+  legendCatalog:SL_LEGENDS.map(x=>x.id),
+  livingLegends:units.filter(unit=>!unit.dead&&unit.special.legend).map(unit=>({side:unit.side,id:unit.special.legendKind,lane:unit.lane})),
   modeText:document.querySelector('#modeStatus').textContent
 })`, context);
+
+const strategy = vm.runInContext(`(()=>{
+ sideSpawnWeights[1]=[3,1,1];spawnStrategyState[1]={total:0,counts:[0,0,0]};
+ const lanes=Array.from({length:10},()=>nextStrategyLane(1));
+ return{lanes,counts:[0,1,2].map(lane=>lanes.filter(x=>x===lane).length)}
+})()`,context);
 
 const collision = vm.runInContext(`(()=>{
   const pair=structures.find(s=>s.auxiliary),direction=pair.side===1?1:-1;
@@ -291,13 +303,13 @@ const tactical = vm.runInContext(`(()=>{
   gameMode='pve';
   const base={role:'fighter',hp:500,def:20,atk:20,speed:5,range:1.2,rate:1,cost:10,gen:1,ability:{name:'Teste',desc:''}};
   const troop=spawnUnit(1,1,'Medievais',{...base,name:'Tropa de teste',special:{}});troop.x=7000;
-  const legend=spawnUnit(1,0,'Medievais',{...base,name:'Lenda de teste',role:'unique',special:{legend:true}});legend.x=6500;
+  const legend=units.find(u=>!u.dead&&u.side===1&&u.special.legend)||spawnUnit(1,0,'Medievais',{...base,name:'Lenda de teste',role:'unique',special:{legend:true}});legend.x=6500;
   const tower=structures.find(s=>!s.dead&&s.side===-1&&s.lane===1&&!s.auxiliary),towerTarget=SL_TACTICAL_TARGETING.clickedTarget(SL_MOBA_SQUARE_V2.structurePos(tower));
   const troopsOk=SL_TACTICAL_TARGETING.commandTroops(towerTarget)&&troop.manualTargetId===tower.id;
   const legendOk=SL_TACTICAL_TARGETING.commandLegend(towerTarget)&&!!legend.tacticalWorld;
   const buff=SL_MOBA_SQUARE_V2.buffZones[0],buffTarget=SL_TACTICAL_TARGETING.clickedTarget({x:buff.x,y:buff.y});SL_TACTICAL_TARGETING.commandLegend(buffTarget);
   const before=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);SL_TACTICAL_TARGETING.handleUnit(legend,.5,simTime);const after=Math.hypot(legend.tacticalWorld.x-buff.x,legend.tacticalWorld.y-buff.y);
-  const enemyLegend=spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;attack(enemyLegend,legend,simTime+1);
+  const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special.legend)||spawnUnit(-1,0,'Alienígenas',{...base,name:'Lenda inimiga',role:'unique',special:{legend:true}});enemyLegend.x=legend.x;attack(enemyLegend,legend,simTime+1);
   const minion={minion:true,special:{}},normalTroop={minion:false,special:{}},plainLegend={minion:false,special:{legend:true}};
   const normal=[SL_TURRETS_V1.priorityFor(minion,false),SL_TURRETS_V1.priorityFor(normalTroop,false),SL_TURRETS_V1.priorityFor(plainLegend,false)];
   const defensive=[SL_TURRETS_V1.priorityFor(plainLegend,true),SL_TURRETS_V1.priorityFor(normalTroop,true),SL_TURRETS_V1.priorityFor(minion,true)];
@@ -319,6 +331,9 @@ if (state.mainProgress.some(row=>JSON.stringify(row)!==JSON.stringify([.1,.2,.3,
 if (!state.turretPairs.every(pair=>pair.length===2&&pair[0].x===pair[1].x&&Math.abs(pair[0].sub)===.75&&Math.abs(pair[1].sub)===.75)) throw new Error('torretas não estão emparelhadas lateralmente');
 if (!state.gapCoverage.every(value=>value>=.75)) throw new Error(`cobertura defensiva abaixo de 75%: ${state.gapCoverage.join(', ')}`);
 if (state.aiAdjustments<1||!state.modeText.includes('IA adaptativa')) throw new Error('IA ao vivo não registrou aprendizagem adaptativa');
+if (JSON.stringify(state.legendCatalog)!=='["nefal","karkinos","vesper"]') throw new Error(`catálogo de Lendas inválido: ${state.legendCatalog}`);
+if (state.livingLegends.length!==2||![-1,1].every(side=>state.livingLegends.some(x=>x.side===side))) throw new Error(`Lendas não entraram com a primeira onda: ${JSON.stringify(state.livingLegends)}`);
+if (JSON.stringify(strategy.counts)!=='[6,2,2]') throw new Error(`proporção 3:1:1 não foi respeitada: ${JSON.stringify(strategy)}`);
 if (!state.unitSubs.includes(-2) || !state.unitSubs.includes(2)) throw new Error('formação não ocupa as cinco sub-lanes');
 if (Math.abs(collision.target)!==2) throw new Error('unidade não desviou do bloqueio central das torretas para as sub-lanes 1 ou 5');
 if (!tactical.troopsOk||!tactical.legendOk||!tactical.buffOnly||!tactical.moved||!tactical.aggro||!tactical.cameraMoved) throw new Error(`comando contextual incompleto: ${JSON.stringify(tactical)}`);

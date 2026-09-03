@@ -100,10 +100,11 @@ function buyUnit(side,t){
  for(const x of roster){let key=x.fac+'|'+x.u.name;if(sideGold(side)<x.u.cost||t<(ready[key]||0)||!canSpawnUnit(side,x.u))continue;
   for(let lane=0;lane<3;lane++){
    let f=laneFeatures(side,lane),learned=ep.policy.unitQ[key]||0,laneLearned=ep.policy.laneQ[lane]||0;
+   let prior=sideSpawnWeights?.[side]||[1,1,1],priorSum=prior.reduce((a,b)=>a+b,0)||3,openingBias=clampAI(1-t/240,0,.22)*(prior[lane]/priorSum-1/3)*3;
    let needFront=f[1]>.18&&(x.u.role==='tank'||x.u.role==='fighter'||x.u.role==='bruiser')?.28:0;
    let needRange=f[2]>.18&&(x.u.role==='ranged'||x.u.role==='siege'||x.u.role==='support')?.16:0;
    let value=Math.log1p(Math.max(0,unitValue(x.u))*40)*.32;
-   options.push({x,key,lane,score:value+learned+laneLearned+f[1]*.30+needFront+needRange-Math.min(1,x.u.cost/Math.max(1,sideGold(side)))*.10})
+   options.push({x,key,lane,score:value+learned+laneLearned+openingBias+f[1]*.30+needFront+needRange-Math.min(1,x.u.cost/Math.max(1,sideGold(side)))*.10})
   }
  }
  if(!options.length)return;let pick=softChoice(options,.40,.10),u=pick.x.u;

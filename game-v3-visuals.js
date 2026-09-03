@@ -1,4 +1,4 @@
-function attackColor(u){let p=facMeta(u.fac)?.palette||['#ddd'];return p[0]}
+function attackColor(u){if(u.special?.legendColor)return u.special.legendColor;let p=facMeta(u.fac)?.palette||['#ddd'];return p[0]}
 const TEAM_THEME={
   1:{primary:'#4eb7ff',dark:'#173f62',soft:'rgba(78,183,255,.22)',label:'TIME AZUL'},
   '-1':{primary:'#ff646c',dark:'#65252b',soft:'rgba(255,100,108,.22)',label:'TIME VERMELHO'}

@@ -14,9 +14,12 @@ Este documento registra a autoridade real das camadas atuais. Ele não propõe u
 1. `factions-v3.js` cria facções, tropas, minions e regras de combate.
 2. `minion-speed-v1.js` uniformiza a velocidade dos minions em 5,4.
 3. `balance-patch-v3-3.js` aplica o balanceamento numérico vigente às tropas.
-4. `game-v3-core.js` executa economia, ondas, ordens, IA, combate e estruturas.
-5. `game-v3-visuals.js` desenha mapa, unidades, efeitos e interface Canvas.
-6. `extras.js` cuida das composições salvas no navegador.
+4. `legends-v1.js` registra as três Lendas sem inseri-las no catálogo de tropas das facções.
+5. `game-v3-core.js` executa economia, ondas, pré-estratégia de spawn, ordens, IA, combate e estruturas.
+6. `game-v3-visuals.js` desenha mapa, unidades, efeitos e interface Canvas.
+7. `extras.js` salva composição, proporção de spawn, Lenda e foco inicial no navegador.
+8. `visual-lote-01.js` a `visual-lote-05.js` especializam as 26 facções; `visual-legends-v1.js` deve vir depois deles para manter os rigs exclusivos das Lendas.
+9. `moba-square-v2.js` instala a projeção/câmera definitiva do mapa atual; `tactical-targeting-v1.js` adiciona alvo contextual, travessia da Lenda e atalhos de câmera.
 
 ## Ordem do laboratório
 
@@ -45,6 +48,8 @@ Funções como `newSide`, `spawnWave`, `towerRetaliation`, `simMatch`, `run` e o
 | Torretas auxiliares no laboratório | `balance-turrets-v1.js` |
 | Escolha adaptativa no laboratório | `balance-strategy-v1.js` |
 | Ordens e combate do jogo visível | `game-v3-core.js` |
+| Lendas e pré-estratégia renderizada | `legends-v1.js` e `game-v3-core.js` |
+| Rigs procedurais das Lendas | `visual-legends-v1.js` |
 | Renderização provisória | `game-v3-visuals.js` |
 | Planos visuais finais | pasta Stick Lanes no Google Drive |
 

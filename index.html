@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="mobile-landscape-v1.css?v=20260903-map-expansion1">
 <link rel="stylesheet" href="match-focus-v1.css?v=20260903-adaptive-ai1">
 <link rel="stylesheet" href="tactical-targeting-v1.css?v=20260903-context-target1">
+<link rel="stylesheet" href="prestrategy-legends-v1.css?v=20260903-legends1">
 </head>
 <body>
 <div id="app">
@@ -55,6 +56,36 @@
 
     <h2>Escolha 8 unidades <span id="count" class="badge">0/8</span></h2>
     <div id="pool" class="unitPool"></div>
+
+    <section class="battlePlan panel compactPanel" aria-labelledby="battlePlanTitle">
+      <div class="battlePlanHeading">
+        <div><span class="eyebrow">PRÉ-ESTRATÉGIA</span><h2 id="battlePlanTitle">Plano de entrada</h2></div>
+        <p class="muted">A proporção decide para qual lane cada tropa comprada será enviada.</p>
+      </div>
+      <div class="strategyPresets" id="strategyPresets" aria-label="Proporções rápidas">
+        <button type="button" class="secondary active" data-weights="1,1,1">1 : 1 : 1</button>
+        <button type="button" class="secondary" data-weights="3,1,1">3 : 1 : 1</button>
+        <button type="button" class="secondary" data-weights="1,3,1">1 : 3 : 1</button>
+        <button type="button" class="secondary" data-weights="1,1,3">1 : 1 : 3</button>
+      </div>
+      <div class="laneWeights" id="laneWeights">
+        <label><span>Top</span><input id="weightTop" type="number" inputmode="numeric" min="0" max="9" value="1"></label>
+        <label><span>Mid</span><input id="weightMid" type="number" inputmode="numeric" min="0" max="9" value="1"></label>
+        <label><span>Bot</span><input id="weightBot" type="number" inputmode="numeric" min="0" max="9" value="1"></label>
+        <strong id="weightSummary">Top 33% • Mid 33% • Bot 33%</strong>
+      </div>
+      <div class="legendPlanRow">
+        <div><strong>Concentração inicial da Lenda</strong><small class="muted">Ela entra com a primeira onda e depois aceita comandos no mapa.</small></div>
+        <select id="legendFocus" aria-label="Concentração inicial da Lenda">
+          <option value="0">Top</option><option value="1" selected>Mid</option><option value="2">Bot</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="legendSetup" aria-labelledby="legendTitle">
+      <div class="battlePlanHeading"><div><span class="eyebrow">ESCOLHA ÚNICA</span><h2 id="legendTitle">Sua Lenda</h2></div><p class="muted">Uma por jogador. Não ocupa vaga entre as oito tropas.</p></div>
+      <div id="legendPool" class="legendPool"></div>
+    </section>
     <button id="start" class="primary disabled">Começar batalha</button>
   </section>
 
@@ -81,6 +112,7 @@
     </div>
     <div class="mapShell"><canvas id="game" width="1800" height="1000"></canvas></div>
     <div class="panel spawnPanel">
+      <div id="activePlan" class="activePlan"></div>
       <div id="spawnbar" class="spawnbar"></div>
       <p class="muted">Unidades compradas agora têm geração de 28 a 120 segundos. O mapa e a resistência estrutural foram alongados para partidas mais longas.</p>
     </div>
@@ -90,7 +122,8 @@
 <script src="minion-speed-v1.js?v=20260902-runtime-fix1"></script>
 <script src="balance-patch-v3-3.js?v=20260902-runtime-fix1"></script>
 <script src="balance-patch-v3-4.js?v=20260903-role-balance1"></script>
-<script src="game-v3-core.js?v=20260903-context-target1"></script>
+<script src="legends-v1.js?v=20260903-legends1"></script>
+<script src="game-v3-core.js?v=20260903-legends1"></script>
 <script src="game-v3-visuals.js?v=20260903-map-expansion1"></script>
 <script src="extras.js?v=20260902-runtime-fix1"></script>
 
@@ -107,6 +140,7 @@
 <script src="visual-lote-03.js?v=20260902-runtime-fix1"></script>
 <script src="visual-lote-04.js?v=20260902-runtime-fix1"></script>
 <script src="visual-lote-05.js?v=20260902-runtime-fix1"></script>
+<script src="visual-legends-v1.js?v=20260903-legends1"></script>
 <script src="visual-team-structures.js?v=20260903-map-expansion1"></script>
 <script src="visual-team-range.js?v=20260903-map-expansion1"></script>
 <script src="frontline-moba-v1.js?v=20260902-runtime-fix1"></script>

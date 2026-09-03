@@ -24,10 +24,14 @@ O menu principal possui somente:
 - O alcance é recalculado pelo comprimento real de cada trecho, mas nunca pode reduzir o alcance-base de uma torre. Torre + par de torretas + torre cobrem continuamente todo intervalo defensivo no mapa atual, acima do piso de **75%**.
 - As torretas possuem 900 de vida, ficam emparelhadas no mesmo progresso da rota e deixam somente as sub-lanes externas como passagem.
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
+- Antes da partida, o jogador define uma proporção de spawn **Top : Mid : Bot**. Há atalhos 1:1:1 e 3:1:1 para cada lane, além de valores personalizados; a distribuição é ponderada e determinística ao longo das compras.
+- Cada lado escolhe **uma Lenda**, fora das oito vagas. Ela entra gratuitamente com a primeira onda e começa concentrada em Top, Mid ou Bot.
+- As três Lendas iniciais são **Néfal, o Horizonte Interior** (controle mentalista), **Karkinos, o Quebra-Marés** (tanque crustáceo) e **Vesper, a Serpente do Eclipse** (mobilidade e dano em área).
 - Economia: **+30 de ouro a cada 2 segundos**.
 - Ordens por lane: **Base**, **Atrás**, **Frente**, **Avançar** e **Atacar**, com uma faixa **Todas** que aplica a mesma ordem às três lanes.
 - A IA usa ouro, cooldowns e unidades válidas como o jogador; não recebe bônus invisíveis.
 - A IA renderizada aprende durante as partidas: ajusta pesos das ordens, preferência de lane e desempenho das tropas; a memória fica separada por combinação de facções.
+- A IA também sorteia uma pré-estratégia e uma Lenda. A preferência de spawn pesa mais na abertura e perde força conforme os resultados observados pedem adaptação.
 - Um toque numa torre ou ponto da lane abre o comando contextual **Lenda / Tropas**. Tropas permanecem na própria lane; a Lenda pode atravessar o mapa. Nas quatro buff zones entre lanes, somente a Lenda pode receber o comando.
 - A navegação rápida **Lenda / Top / Mid / Bot** centraliza a câmera na Lenda ou na tropa comprável mais avançada da lane.
 - Torres priorizam normalmente **minions → tropas → Lendas**. Quando uma Lenda agride uma Lenda aliada dentro da defesa, a prioridade temporária inverte para **Lendas → tropas → minions**.
@@ -81,6 +85,7 @@ Consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) antes de alterar ordem de scripts,
 Arquivos principais:
 
 - `index.html`, `game-v3-core.js`, `game-v3-visuals.js` — jogo renderizado.
+- `legends-v1.js`, `visual-legends-v1.js`, `prestrategy-legends-v1.css` — catálogo, três rigs visuais e preparação pré-jogo das Lendas.
 - `factions-v3.js`, `balance-patch-v3-3.js`, `minion-speed-v1.js` — dados e ajustes compartilhados.
 - `balance.html`, `balance-v3.js` — motor e interface base do laboratório.
 - `balance-map-v4.js`, `balance-minion-wave-v2.js`, `balance-turrets-v1.js`, `balance-strategy-v1.js` — camadas autoritativas do simulador atual.

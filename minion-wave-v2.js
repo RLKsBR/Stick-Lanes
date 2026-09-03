@@ -12,6 +12,7 @@ const FORMATION=[
 ];
 
 spawnWave=function(side){
+  if(waveIndex===0)spawnLegend(side);
   const fac=sideFactions[side][waveIndex%2];
   for(let lane=0;lane<3;lane++){
     for(const slot of FORMATION){
