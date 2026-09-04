@@ -1,6 +1,6 @@
-/* Stick Lanes — paredes físicas + visão bloqueada v2
+/* Stick Lanes — paredes físicas + visão bloqueada v3
    Parede é parede: estreita, sólida, não atravessável e corta linha de visão.
-   As paredes ficam afastadas dos centros B1/B2/B3/B4 para não cobrir os buffs. */
+   Estruturas amigas também concedem visão real além do próprio alcance de ataque. */
 'use strict';
 (function(){
 const map=window.SL_MOBA_SQUARE_V2;
@@ -63,10 +63,18 @@ function routeWaypoint(a,b,pad=48){
 }
 
 function visionRadiusUnit(u){if(u.special?.legend)return 1120;if(u.minion)return 650;if(['ranged','siege','support','controller'].includes(u.role))return 850;return 760}
+function structureAttackWorldRange(s){
+ const route=map.routeLengths?.[s?.lane]||map.routeLengths?.[1]||9000;
+ return Math.max(0,(s?.range||0)*PX*route/Math.max(1,BASE_X[-1]-BASE_X[1]));
+}
+function visionRadiusStructure(s){
+ const attack=structureAttackWorldRange(s),minimum=s?.auxiliary?900:1250,mult=s?.auxiliary?1.85:2.10;
+ return Math.max(minimum,attack*mult);
+}
 function visionSources(side){
  const src=[];for(const u of units){if(u.dead||u.side!==side)continue;src.push({p:map.unitPos(u),r:visionRadiusUnit(u)})}
- for(const s of structures){if(s.dead||s.side!==side)continue;src.push({p:map.structurePos(s),r:s.auxiliary?720:980})}
- const bp=side===1?map.routePoint(1,.01):map.routePoint(1,.99);src.push({p:bp,r:1200});return src;
+ for(const s of structures){if(s.dead||s.side!==side)continue;src.push({p:map.structurePos(s),r:visionRadiusStructure(s)})}
+ const bp=side===1?map.routePoint(1,.01):map.routePoint(1,.99);src.push({p:bp,r:1450});return src;
 }
 function isPointVisible(side,p){for(const src of visionSources(side)){if(Math.hypot(src.p.x-p.x,src.p.y-p.y)<=src.r&&!blocked(src.p,p))return true}return false}
 function isVisibleTo(side,u){if(!u||u.dead)return false;if(u.side===side)return true;const p=map.unitPos(u),v=isPointVisible(side,p);if(v)lastSeen[side]?.set(u.id,{t:simTime,x:p.x,y:p.y,lane:u.lane});return v}
@@ -128,7 +136,7 @@ function handleJungleHold(u,dt,t){
 }
 const oldHandle=tactical.handleUnit;tactical.handleUnit=function(u,dt,t){if(handleTacticalTravel(u,dt,t))return true;if(handleJungleHold(u,dt,t))return true;return oldHandle(u,dt,t)};
 
-window.SL_VISION={version:2,walls:WALLS,blocked,blockingWall,pointInside,routeWaypoint,isPointVisible,isVisibleTo,seenRecently,visibleEnemies,lastSeenInfo:(side,id)=>lastSeen[side]?.get(id)||null,health(){return{loaded:true,physical:true,walls:WALLS.length,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
+window.SL_VISION={version:3,walls:WALLS,blocked,blockingWall,pointInside,routeWaypoint,isPointVisible,isVisibleTo,seenRecently,visibleEnemies,visionRadiusUnit,visionRadiusStructure,structureAttackWorldRange,lastSeenInfo:(side,id)=>lastSeen[side]?.get(id)||null,health(){return{loaded:true,physical:true,walls:WALLS.length,structureVisionBeyondAttack:true,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
 })();
 
 /* Carrega o executor final depois que o árbitro estiver disponível. O próprio
