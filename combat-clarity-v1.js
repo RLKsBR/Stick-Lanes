@@ -1,17 +1,17 @@
-/* Stick Lanes — clareza de combate v1
-   Números de dano, hit feedback, alcance visível, fog of war e duelos de Lenda
-   mais decisivos. Tudo usa o mesmo estado real do combate; nada é cosmético
-   a ponto de mentir sobre alcance ou dano. */
+/* Stick Lanes — clareza de combate v2
+   Números de dano, hit feedback, alcance visível, fog of war suave e duelos de
+   Lenda mais decisivos. O fog usa a mesma visão real do gameplay, inclusive
+   visão estrutural além do alcance de ataque e bloqueio por paredes. */
 'use strict';
 (function boot(){
  const map=window.SL_MOBA_SQUARE_V2,vision=window.SL_VISION;
  if(!map||!vision||typeof attack!=='function'||typeof draw!=='function'||typeof factionDamageBonus!=='function'){setTimeout(boot,50);return}
- if(window.SL_COMBAT_CLARITY?.version>=1)return;
+ if(window.SL_COMBAT_CLARITY?.version>=2)return;
 
  const LEGEND_DUEL_DAMAGE=2.2;
- const FX_LIFE=.82,FOG_STEP=72,FOG_REFRESH=.12;
+ const FX_LIFE=.82,FOG_MASK_W=64,FOG_REFRESH_REAL=.13,FOG_ALPHA=214;
  const fx=[];
- let fogCanvas=null,fogCtx=null,lastFogAt=-999;
+ let fogCanvas=null,fogCtx=null,fogImage=null,lastFogReal=-999;
 
  /* Duelos de Lenda deixam de durar uma eternidade. O multiplicador é simétrico:
     aumenta a decisão do confronto sem favorecer uma Lenda específica. */
@@ -89,24 +89,31 @@
 
  function ownVisionSources(){
    const src=[];
-   for(const u of units){if(u.dead||u.side!==1)continue;let r=u.special?.legend?1120:u.minion?650:['ranged','siege','support','controller'].includes(u.role)?850:760;src.push({p:unitWorld(u),r})}
-   for(const s of structures){if(s.dead||s.side!==1)continue;src.push({p:structureWorld(s),r:s.auxiliary?720:980})}
-   src.push({p:map.routePoint(1,.01),r:1200});return src
+   for(const u of units){if(u.dead||u.side!==1)continue;const r=vision.visionRadiusUnit?.(u)??(u.special?.legend?1120:u.minion?650:['ranged','siege','support','controller'].includes(u.role)?850:760);src.push({p:unitWorld(u),r})}
+   for(const s of structures){if(s.dead||s.side!==1)continue;const r=vision.visionRadiusStructure?.(s)??(s.auxiliary?900:1250);src.push({p:structureWorld(s),r})}
+   src.push({p:map.routePoint(1,.01),r:1450});return src
  }
  function pointVisibleFast(p,sources){
    for(const s of sources){const dx=s.p.x-p.x,dy=s.p.y-p.y;if(dx*dx+dy*dy>s.r*s.r)continue;if(!vision.blocked(s.p,p))return true}return false
  }
- function ensureFog(){if(fogCanvas)return;fogCanvas=document.createElement('canvas');fogCanvas.width=VIEW_W;fogCanvas.height=VIEW_H;fogCtx=fogCanvas.getContext('2d')}
- function rebuildFog(t){
-   ensureFog();if(t-lastFogAt<FOG_REFRESH)return;lastFogAt=t;fogCtx.clearRect(0,0,VIEW_W,VIEW_H);
-   const sources=ownVisionSources(),z=map.zoom,cx=map.cameraX,cy=map.cameraY;
-   for(let y=0;y<VIEW_H;y+=FOG_STEP)for(let x=0;x<VIEW_W;x+=FOG_STEP){
-     const p={x:cx+(x+FOG_STEP*.5)/z,y:cy+(y+FOG_STEP*.5)/z};if(pointVisibleFast(p,sources))continue;
-     fogCtx.fillStyle='rgba(1,4,7,.78)';fogCtx.fillRect(x-2,y-2,FOG_STEP+4,FOG_STEP+4)
-   }
+ function ensureFog(){
+   if(fogCanvas)return;const h=Math.max(24,Math.round(FOG_MASK_W*VIEW_H/VIEW_W));fogCanvas=document.createElement('canvas');fogCanvas.width=FOG_MASK_W;fogCanvas.height=h;fogCtx=fogCanvas.getContext('2d',{alpha:true});fogImage=fogCtx.createImageData(FOG_MASK_W,h)
  }
- function drawFog(t){
-   rebuildFog(t);ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(fogCanvas,0,0);ctx.restore()
+ function rebuildFog(){
+   ensureFog();const now=performance.now()/1000;if(now-lastFogReal<FOG_REFRESH_REAL)return;lastFogReal=now;
+   const w=fogCanvas.width,h=fogCanvas.height,sources=ownVisionSources(),z=map.zoom,cx=map.cameraX,cy=map.cameraY,raw=new Uint8Array(w*h),soft=new Uint8Array(w*h);
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+     const p={x:cx+(x+.5)*VIEW_W/(w*z),y:cy+(y+.5)*VIEW_H/(h*z)};raw[y*w+x]=pointVisibleFast(p,sources)?0:FOG_ALPHA
+   }
+   /* Um box blur minúsculo no mask + interpolação do canvas remove o efeito de
+      azulejos/retângulos sem alterar a regra lógica de quem está visível. */
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+     let sum=0,n=0;for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){const xx=x+ox,yy=y+oy;if(xx<0||yy<0||xx>=w||yy>=h)continue;sum+=raw[yy*w+xx];n++}soft[y*w+x]=Math.round(sum/n)
+   }
+   const d=fogImage.data;for(let i=0;i<soft.length;i++){const k=i*4;d[k]=1;d[k+1]=4;d[k+2]=7;d[k+3]=soft[i]}fogCtx.putImageData(fogImage,0,0)
+ }
+ function drawFog(){
+   rebuildFog();ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(fogCanvas,0,0,VIEW_W,VIEW_H);ctx.restore()
  }
 
  const previousDraw=draw;
@@ -116,8 +123,8 @@
    const all=units,visibleIds=new Set(all.filter(u=>u.side===1||vision.isVisibleTo(1,u)).map(u=>u.id));
    units=all.filter(u=>visibleIds.has(u.id));
    try{previousDraw(t)}finally{units=all}
-   drawRanges(t);drawFx(t);drawFog(t)
+   drawRanges(t);drawFx(t);drawFog()
  };
 
- window.SL_COMBAT_CLARITY={version:1,legendDuelDamage:LEGEND_DUEL_DAMAGE,get effects(){return fx},health(){return{loaded:true,damageNumbers:true,hitAnimation:true,attackRange:true,fog:true,legendDuelDamage:LEGEND_DUEL_DAMAGE,balance:window.SL_LEGENDS_API?.balanceReport?.()||null}}};
+ window.SL_COMBAT_CLARITY={version:2,legendDuelDamage:LEGEND_DUEL_DAMAGE,get effects(){return fx},health(){return{loaded:true,damageNumbers:true,hitAnimation:true,attackRange:true,fog:true,fogSmooth:true,structureVisionBeyondAttack:!!vision.health?.().structureVisionBeyondAttack,legendDuelDamage:LEGEND_DUEL_DAMAGE,balance:window.SL_LEGENDS_API?.balanceReport?.()||null}}};
 })();
