@@ -10,6 +10,19 @@ await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'load',timeout:150
 await page.click('#menuRobots');
 await page.waitForFunction(()=>!document.querySelector('#gameUI')?.hidden&&window.SL_AI_FUNCTIONAL_CONTROLLER?.version>=3,null,{timeout:7000});
 
+const draftCheck=await page.evaluate(()=>({draft:SL_ASSISTED_DRAFT?.health?.()||null,vision:SL_AI_SIDE_VISION?.health?.()||null}));
+if(!draftCheck.draft?.completed)throw new Error('assisted draft did not complete '+JSON.stringify(draftCheck));
+if(draftCheck.draft.globalFactionBans?.length!==2)throw new Error('expected two global faction bans '+JSON.stringify(draftCheck.draft));
+for(const color of['orange','red']){
+  const t=draftCheck.draft[color];
+  if(t?.factions?.length!==2)throw new Error(`${color} did not receive two factions `+JSON.stringify(t));
+  if(t?.bannedReceived?.length!==4)throw new Error(`${color} did not receive four troop bans `+JSON.stringify(t));
+  if(t?.deck?.length!==8)throw new Error(`${color} deck is not eight troops `+JSON.stringify(t));
+  if(!Array.isArray(t?.flow)||t.flow.reduce((a,b)=>a+b,0)!==5)throw new Error(`${color} flow is not a five-slot distribution `+JSON.stringify(t));
+}
+if(draftCheck.draft.orange.seat===draftCheck.draft.red.seat)throw new Error('both assisted AIs received the same side seat '+JSON.stringify(draftCheck.draft));
+if(!draftCheck.vision?.usesOwnSideVision)throw new Error('side-limited AI vision guard is not active '+JSON.stringify(draftCheck.vision));
+
 await page.click('#simSpeedControls button[data-speed="20"]');
 await page.waitForFunction(()=>typeof units!=='undefined'&&units.some(u=>!u.dead&&u.side===1&&u.special?.legend)&&units.some(u=>!u.dead&&u.side===-1&&u.special?.legend),null,{timeout:9000});
 await page.click('#simSpeedControls button[data-speed="1"]');
@@ -52,7 +65,8 @@ const result=await page.evaluate(()=>{
     }
   }
   const health=api.health(),afterQ=SL_AI_LEGACY_QUARANTINE?.health?.().passes??0;
-  return{beforeQ,afterQ,afterArrival,holdSeenAfterArrival,badOrders,unplanned,staleHolds,samples,health,simTime,orders:{orange:[...orders[1]],red:[...orders[-1]]},arbiter:SL_LEGEND_INTENT_ARBITER?.get?.(1)??null}
+  const honestVision=SL_AI_SIDE_VISION?.health?.()||null;
+  return{beforeQ,afterQ,afterArrival,holdSeenAfterArrival,badOrders,unplanned,staleHolds,samples,health,honestVision,simTime,orders:{orange:[...orders[1]],red:[...orders[-1]]},arbiter:SL_LEGEND_INTENT_ARBITER?.get?.(1)??null}
 });
 
 if(errors.length)throw new Error(errors.join(' | '));
@@ -67,6 +81,7 @@ if(result.badOrders)throw new Error(`AI produced ${result.badOrders} invalid lan
 if(result.staleHolds)throw new Error(`AI legends accumulated ${result.staleHolds} stale manualHold samples`);
 if(result.health.decisions<40)throw new Error('too few AI decisions in long stress '+JSON.stringify(result.health));
 if(result.health.purchases<2)throw new Error('AI economy appears inactive '+JSON.stringify(result.health));
+if(!result.honestVision?.usesOwnSideVision||result.honestVision.filteredReads<1)throw new Error('AI did not perform visibility-filtered enemy reads '+JSON.stringify(result.honestVision));
 
-console.log(JSON.stringify({ok:true,...result},null,2));
+console.log(JSON.stringify({ok:true,draftCheck,...result},null,2));
 await browser.close();
