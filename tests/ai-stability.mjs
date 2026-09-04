@@ -59,28 +59,12 @@ if(!regression.quarantine?.exclusiveLegendWriter||!regression.quarantine?.exclus
 // mesmo horizonte temporal em que o bug foi observado pelo jogador.
 const stressStart=await page.evaluate(()=>{
   playerBase=1e9;enemyBase=1e9;
-  const before=SL_AI_LEGEND_AUTHORITY.health().hijacksRejected;
-  window.__SL_QA_STRESS={injected:0,before};
-  window.__SL_QA_INTERVAL=setInterval(()=>{
-    const u=units.find(x=>!x.dead&&x.side===1&&x.special?.legend);
-    if(!u)return;
-    const d=u.tacticalDestination;
-    // Reproduz repetidamente o defeito real: outro controlador tenta escrever um
-    // ponto diferente NA MESMA LANE, sem o selo do executor único.
-    const lane=Number.isInteger(d?.lane)?d.lane:(Number.isInteger(u.lane)?u.lane:0);
-    const currentT=Number.isFinite(d?.t)?d.t:(u.side===1?.48:.52);
-    const wrongT=Math.max(.08,Math.min(.92,currentT<.5?currentT+.22:currentT-.22));
-    const p=SL_MOBA_SQUARE_V2.routePoint(lane,wrongT),a=SL_MOBA_SQUARE_V2.unitPos(u);
-    u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};
-    u.tacticalDestination={kind:'point',lane,t:wrongT,x:BASE_X[1]+wrongT*(BASE_X[-1]-BASE_X[1]),world:{x:p.x,y:p.y}};
-    window.__SL_QA_STRESS.injected++;
-  },300);
-  return{simTime,before}
+  return{simTime,before:SL_AI_LEGEND_AUTHORITY.health().hijacksRejected}
 });
 
 await page.click('#simSpeedControls button[data-speed="20"]');
 const targetSimTime=stressStart.simTime+480;
-let violations=0,samples=0,last=null;
+let escapedHijacks=0,injected=0,samples=0,last=null;
 for(let i=0;i<175;i++){
   await page.waitForTimeout(180);
   const s=await page.evaluate(()=>{
@@ -88,21 +72,41 @@ for(let i=0;i<175;i++){
       const h=SL_AI_PLAN_STABILITY.health(),pick=s=>s?{committed:s.committed?.key||null,committedAt:s.committedAt,lastProgressAt:s.lastProgressAt,lastMetric:s.lastMetric,rejectedSwitches:s.rejectedSwitches,acceptedSwitches:s.acceptedSwitches,reversalBlocks:s.reversalBlocks,emergencySwitches:s.emergencySwitches,lastProposal:s.lastProposal}:null;
       return{loaded:h.loaded,commitment:h.commitment,red:pick(h.red),orange:pick(h.orange)}
     };
+    let injectedNow=false,escapedNow=false,rejectedNow=false;
+    const u=units.find(x=>!x.dead&&x.side===1&&x.special?.legend);
+    if(u){
+      const d=u.tacticalDestination,lane=Number.isInteger(d?.lane)?d.lane:(Number.isInteger(u.lane)?u.lane:0);
+      const currentT=Number.isFinite(d?.t)?d.t:(u.side===1?.48:.52);
+      const wrongT=Math.max(.08,Math.min(.92,currentT<.5?currentT+.22:currentT-.22));
+      const p=SL_MOBA_SQUARE_V2.routePoint(lane,wrongT),a=SL_MOBA_SQUARE_V2.unitPos(u);
+      const before=SL_AI_LEGEND_AUTHORITY.health().hijacksRejected;
+      u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};
+      u.tacticalDestination={kind:'point',lane,t:wrongT,x:BASE_X[1]+wrongT*(BASE_X[-1]-BASE_X[1]),world:{x:p.x,y:p.y}};
+      injectedNow=true;
+      // Verifica após um tick real do mesmo executor usado pela partida. Isso elimina
+      // a falsa corrida do teste anterior, em que o sampler podia capturar os poucos
+      // milissegundos ENTRE a injeção artificial e o frame seguinte.
+      simulationStep(.016);
+      const after=SL_AI_LEGEND_AUTHORITY.health().hijacksRejected;
+      rejectedNow=after>before;
+      escapedNow=!!(u.tacticalDestination&&!u.tacticalDestination.slAuthority);
+    }
     const list=units.filter(u=>!u.dead&&u.special?.legend&&(u.side===-1||gameMode==='robot'&&u.side===1));
-    return{simTime,alive:running,base1:playerBase,base2:enemyBase,bad:list.filter(u=>u.tacticalDestination&&!u.tacticalDestination.slAuthority).map(u=>({side:u.side,kind:u.tacticalDestination.kind,lane:u.tacticalDestination.lane,t:u.tacticalDestination.t})),authority:SL_AI_LEGEND_AUTHORITY.health(),stability:compactStability(),quarantine:SL_AI_LEGACY_QUARANTINE.health(),stress:{...window.__SL_QA_STRESS}}
+    return{simTime,alive:running,base1:playerBase,base2:enemyBase,injectedNow,rejectedNow,escapedNow,bad:list.filter(u=>u.tacticalDestination&&!u.tacticalDestination.slAuthority).map(u=>({side:u.side,kind:u.tacticalDestination.kind,lane:u.tacticalDestination.lane,t:u.tacticalDestination.t})),authority:SL_AI_LEGEND_AUTHORITY.health(),stability:compactStability(),quarantine:SL_AI_LEGACY_QUARANTINE.health()}
   });
-  last=s;samples++;violations+=s.bad.length;
+  last=s;samples++;
+  if(s.injectedNow){injected++;if(!s.rejectedNow||s.escapedNow)escapedHijacks++}
+  if(s.bad.length)escapedHijacks+=s.bad.length;
   if(s.simTime>=targetSimTime)break;
 }
-await page.evaluate(()=>{clearInterval(window.__SL_QA_INTERVAL);delete window.__SL_QA_INTERVAL});
 
 if(!last||last.simTime<targetSimTime)throw new Error(`8-minute stress window incomplete: ${last?.simTime} < ${targetSimTime}`);
-if(violations)throw new Error(`found ${violations} surviving unauthorized Legend destinations across ${samples} samples`);
 if(!last.quarantine?.exclusiveTeamOrderWriter)throw new Error('team order quarantine lost ownership during long run');
-if((last.stress?.injected||0)<20)throw new Error('stress did not inject enough same-lane hijacks '+JSON.stringify(last.stress));
-const rejectedDuringStress=(last.authority?.hijacksRejected||0)-(last.stress?.before||0);
-if(rejectedDuringStress<(last.stress?.injected||0)*.8)throw new Error('too many same-lane hijacks escaped authority '+JSON.stringify({rejectedDuringStress,stress:last.stress,authority:last.authority}));
+if(injected<20)throw new Error(`stress injected only ${injected} same-lane hijacks`);
+if(escapedHijacks)throw new Error(`${escapedHijacks} same-lane hijacks escaped authority across ${samples} samples / ${injected} injections`);
+const rejectedDuringStress=(last.authority?.hijacksRejected||0)-stressStart.before;
+if(rejectedDuringStress<injected)throw new Error('not every injected same-lane hijack was rejected '+JSON.stringify({rejectedDuringStress,injected,authority:last.authority}));
 if(errors.length)throw new Error(errors.join(' | '));
 
-console.log(JSON.stringify({ok:true,regression,targetSimTime,samples,violations,rejectedDuringStress,final:last},null,2));
+console.log(JSON.stringify({ok:true,regression,targetSimTime,samples,injected,escapedHijacks,rejectedDuringStress,final:last},null,2));
 await browser.close();
