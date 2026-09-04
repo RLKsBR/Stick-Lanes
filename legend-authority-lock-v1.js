@@ -33,8 +33,8 @@ function laneInfo(side,lane){
        ownWeak=ownTower?1-towerRatio(ownTower):1,enemyWeak=enemyTower?1-towerRatio(enemyTower):1,
        ownWave=units.filter(u=>!u.dead&&u.side===side&&u.lane===lane&&u.minion).length,
        foeWave=units.filter(u=>!u.dead&&u.side===-side&&u.lane===lane&&u.minion).length;
- const danger=(-edge)*1.15+ownWeak*.68+(!ownTower?.25:0)+(foeWave>ownWave+2?.18:0);
- const push=edge*.92+enemyWeak*.72+(!enemyTower?.42:0)+(ownWave>foeWave?.12:0);
+ const danger=(-edge)*1.15+ownWeak*.68+(!ownTower ? .25 : 0)+(foeWave>ownWave+2 ? .18 : 0);
+ const push=edge*.92+enemyWeak*.72+(!enemyTower ? .42 : 0)+(ownWave>foeWave ? .12 : 0);
  return{lane,own,foe,edge,ownTower,enemyTower,ownWeak,enemyWeak,ownWave,foeWave,danger,push}
 }
 function snapshot(side){return{ownBase:baseRatio(side),enemyBase:baseRatio(-side),lanes:[0,1,2].map(l=>laneInfo(side,l))}}
@@ -84,9 +84,9 @@ function clearManual(u,keepTravel=false){
  if(!keepTravel){delete u.tacticalWorld;delete u.tacticalDestination}
 }
 function routeRatio(side,mode){
- if(mode==='DEFEND')return side===1?.28:.72;
- if(mode==='FINISH')return side===1?.72:.28;
- return side===1?.52:.48
+ if(mode==='DEFEND')return side===1 ? .28 : .72;
+ if(mode==='FINISH')return side===1 ? .72 : .28;
+ return side===1 ? .52 : .48
 }
 function issueLegend(side,p,t,force=false){
  const u=legend(side);if(!u||!p)return false;
