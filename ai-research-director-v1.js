@@ -147,9 +147,9 @@ function choosePlan(side,t){
  const emergency=best[0]==='DEFEND_BASE'&&c.worst.threat.score>.72||best[0]==='RESET'&&hpRatio(c.me)<.22||best[0]==='FINISH_BASE'&&c.enemyTTD<18;
  const cur=b.plan,expired=!cur||t>=cur.until,margin=!cur?Infinity:best[1]-(scores[cur.key]??-Infinity),stalled=cur&&t-cur.progressAt>10;
  let switchNow=expired||emergency||stalled||margin>.95;
- if(cur&&!switchNow){b.scoreTrace=ranked.slice(0,6).map(([key,score])=>({key,score:+score.toFixed(3)}));return cur}
+ if(cur&&!switchNow){cur.ctx=c;cur.score=scores[cur.key]??cur.score;b.scoreTrace=ranked.slice(0,6).map(([key,score])=>({key,score:+score.toFixed(3)}));return cur}
  const key=best[0],life=key.startsWith('OBJ_')?24:key==='DEFEND_BASE'?9:key==='FINISH_BASE'?10:key==='RESET'?7:key==='HUNT'?5:7;
- if(cur&&cur.key!==key&&t-b.lastSwitch<3.2&&!emergency){b.pingPong++;return cur}
+ if(cur&&cur.key!==key&&t-b.lastSwitch<3.2&&!emergency){b.pingPong++;cur.ctx=c;cur.score=scores[cur.key]??cur.score;return cur}
  b.lastPlan=cur;b.lastSwitch=t;b.decisionCount++;b.plan={key,score:best[1],created:t,until:t+life,progressAt:t,reason:`utility:${best[1].toFixed(2)} margin:${(best[1]-(second?.[1]??0)).toFixed(2)}`,ctx:c};
  b.scoreTrace=ranked.slice(0,6).map(([k,score])=>({key:k,score:+score.toFixed(3)}));pushTrace(side,{key,score:+best[1].toFixed(3),reason:b.plan.reason});return b.plan
 }
@@ -169,7 +169,7 @@ function applyOrders(side,plan){
  if(key==='RESET'){for(let l=0;l<3;l++)if(c.lanes[l].threat.score>.45)orders[side][l]='behind'}
 }
 function legendIntent(side,plan){
- if(!plan)return null;const c=plan.ctx,u=c.me;if(!u)return null,key=plan.key,lane=planLane(plan,c),base={priority:80,source:'research100',reason:plan.reason,created:plan.created};
+ if(!plan)return null;const c=plan.ctx,u=c.me;if(!u)return null;const key=plan.key,lane=planLane(plan,c),base={priority:80,source:'research100',reason:plan.reason,created:plan.created};
  if(key==='DEFEND_BASE')return{...base,kind:'base',lane,priority:122,term:'DEFEND_BASE'};
  if(key==='FINISH_BASE')return{...base,kind:'finish',lane,priority:113,term:'END_GAME'};
  if(key==='DEFEND_TOWER')return{...base,kind:'guard',lane,t:clamp((bestCriticalTower(c)?.s?.x-BASE_X[1])/(BASE_X[-1]-BASE_X[1]),.05,.95),priority:96,term:'DEFEND_STRUCTURE'};
