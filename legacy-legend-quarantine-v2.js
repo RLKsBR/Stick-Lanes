@@ -1,8 +1,8 @@
-/* Stick Lanes — Legacy Legend Quarantine v2
+/* Stick Lanes — Legacy Strategic Quarantine v2
    Research v2 finding: old strategic layers were still writing directly into the
-   Legend's movement state inside runSideAI. This wrapper preserves their economy,
-   purchases, learning and troop orders, but rolls back every legacy Legend movement
-   mutation before the Research Director gets control.
+   Legend's movement state AND team lane orders inside runSideAI. This wrapper keeps
+   their economy, purchases and learning, but rolls back legacy movement/order writes
+   before the Research Director gets control.
 */
 'use strict';
 (function(){
@@ -10,7 +10,7 @@ if(typeof runSideAI!=='function'||window.SL_AI_LEGACY_QUARANTINE?.version>=2)ret
 
 const MOVEMENT_KEYS=['lane','x','sub','subTarget','tacticalWorld','tacticalDestination','manualBuff','manualTargetId','manualUnitTargetId','manualHold'];
 const rawAI=runSideAI;
-let blockedMovementWrites=0,passes=0;
+let blockedMovementWrites=0,blockedOrderWrites=0,passes=0;
 const isAI=side=>side===-1||gameMode==='robot';
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 function legends(side){return units.filter(u=>!u.dead&&u.side===side&&u.special?.legend)}
@@ -27,11 +27,16 @@ function restore(s){
  if(signature(u)!==s.signature)blockedMovementWrites++;
  for(const [k,p] of Object.entries(s.props)){if(p.had)u[k]=p.value;else delete u[k]}
 }
+function sameOrders(a,b){return!!a&&!!b&&a.length===b.length&&a.every((v,i)=>v===b[i])}
 runSideAI=function(side,t){
  if(!isAI(side))return rawAI(side,t);
- const snaps=legends(side).map(snapshot);const out=rawAI(side,t);passes++;
+ const snaps=legends(side).map(snapshot),orderSnap=Array.isArray(orders?.[side])?orders[side].slice():null;
+ const out=rawAI(side,t);passes++;
  for(const s of snaps)restore(s);
+ if(orderSnap&&Array.isArray(orders?.[side])&&!sameOrders(orderSnap,orders[side])){
+   blockedOrderWrites++;orders[side].splice(0,orders[side].length,...orderSnap)
+ }
  return out
 };
-window.SL_AI_LEGACY_QUARANTINE={version:2,health(){return{loaded:true,exclusiveLegendWriter:true,blockedMovementWrites,passes}}};
+window.SL_AI_LEGACY_QUARANTINE={version:2,health(){return{loaded:true,exclusiveLegendWriter:true,exclusiveTeamOrderWriter:true,blockedMovementWrites,blockedOrderWrites,passes}}};
 })();
