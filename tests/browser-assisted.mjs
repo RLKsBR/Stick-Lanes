@@ -51,7 +51,7 @@ async function runCase(name,viewport){
     error:window.SL_LAST_RUNTIME_ERROR||null,
     laneCards:document.querySelectorAll('#laneControls .laneControl').length,
     globalCommands:document.querySelectorAll('#laneControls .laneControlAll button').length,
-    adaptive:document.querySelector('#modeStatus')?.textContent.includes('IA adaptativa'),
+    functional:document.querySelector('#modeStatus')?.textContent.includes('IA funcional')&&window.SL_AI_FUNCTIONAL_CONTROLLER?.version>=3,
     quickCameraButtons:document.querySelectorAll('#quickCameraBar button').length,
     buffZones:window.SL_MOBA_SQUARE_V2?.buffZones?.length,
     tacticalTargeting:!!window.SL_TACTICAL_TARGETING,
@@ -62,7 +62,7 @@ async function runCase(name,viewport){
   if(state1.running!==true)throw new Error(`${name}: loop da partida não ficou running`);
   if(state1.structures!==60)throw new Error(`${name}: esperado 60 estruturas, recebeu ${state1.structures}`);
   if(state1.laneCards!==4||state1.globalCommands!==5)throw new Error(`${name}: barra global/lanes incompleta: ${state1.laneCards} cartões, ${state1.globalCommands} comandos globais`);
-  if(!state1.adaptive)throw new Error(`${name}: IA adaptativa não foi ativada`);
+  if(!state1.functional)throw new Error(`${name}: IA funcional single-owner não foi ativada`);
   if(state1.quickCameraButtons!==4||state1.buffZones!==4||!state1.tacticalTargeting)throw new Error(`${name}: navegação/comando contextual não foi carregado`);
   if(state1.fullscreen)throw new Error(`${name}: fullscreen entrou automaticamente`);
   if(state1.error)throw new Error(`${name}: erro runtime ${JSON.stringify(state1.error)}`);
