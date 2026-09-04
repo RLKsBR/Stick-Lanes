@@ -55,6 +55,10 @@ async function runCase(name,viewport){
     quickCameraButtons:document.querySelectorAll('#quickCameraBar button').length,
     buffZones:window.SL_MOBA_SQUARE_V2?.buffZones?.length,
     tacticalTargeting:!!window.SL_TACTICAL_TARGETING,
+    movement:window.SL_MOVEMENT_V6?.multiplier,
+    clarity:window.SL_COMBAT_CLARITY?.health?.()||null,
+    jungle:window.SL_JUNGLE_ACCESS?.health?.()||null,
+    legendBalance:window.SL_LEGENDS_API?.balanceReport?.()||null,
     canvasRect:(()=>{const r=document.querySelector('#game')?.getBoundingClientRect();return r?{w:r.width,h:r.height}:null})()
   }));
 
@@ -64,6 +68,12 @@ async function runCase(name,viewport){
   if(state1.laneCards!==4||state1.globalCommands!==5)throw new Error(`${name}: barra global/lanes incompleta: ${state1.laneCards} cartões, ${state1.globalCommands} comandos globais`);
   if(!state1.functional)throw new Error(`${name}: IA funcional single-owner não foi ativada`);
   if(state1.quickCameraButtons!==4||state1.buffZones!==4||!state1.tacticalTargeting)throw new Error(`${name}: navegação/comando contextual não foi carregado`);
+  if(state1.movement!==13.2)throw new Error(`${name}: movimento deveria estar em 13.2x, recebeu ${state1.movement}`);
+  if(!state1.clarity?.damageNumbers||!state1.clarity?.hitAnimation||!state1.clarity?.attackRange||!state1.clarity?.fog)throw new Error(`${name}: clareza visual incompleta ${JSON.stringify(state1.clarity)}`);
+  if(!state1.legendBalance?.withinTenPercent)throw new Error(`${name}: Lendas fora da margem de 10% ${JSON.stringify(state1.legendBalance)}`);
+  const quadrants=Object.fromEntries((state1.jungle?.zones||[]).map(z=>[z.id,z.quadrant]));
+  if(quadrants.buff1!=='ESQUERDA / BAIXO'||quadrants.buff2!=='DIREITA / BAIXO'||quadrants.buff3!=='ESQUERDA / CIMA'||quadrants.buff4!=='DIREITA / CIMA')throw new Error(`${name}: quadrantes dos buffs incorretos ${JSON.stringify(quadrants)}`);
+  if(!state1.jungle?.exactPointCapture)throw new Error(`${name}: captura em qualquer ponto do buff não carregou`);
   if(state1.fullscreen)throw new Error(`${name}: fullscreen entrou automaticamente`);
   if(state1.error)throw new Error(`${name}: erro runtime ${JSON.stringify(state1.error)}`);
   if(!state1.health||state1.health.rafFrames<10)throw new Error(`${name}: RAF não progrediu: ${JSON.stringify(state1.health)}`);
@@ -92,18 +102,26 @@ async function runCase(name,viewport){
     const jungleLegend=legend.tacticalDestination?.kind==='buff';
     const jungleTroopUntouched=troop.manualTargetId===tower.id&&!troop.manualBuff&&!troop.tacticalWorld;
 
-    // 3) Clicar numa Lenda inimiga na lane: tropa + Lenda focam ela.
+    // 3) Clicar numa Lenda inimiga visível na lane: tropa + Lenda focam ela.
     const enemyLegend=units.find(u=>!u.dead&&u.side===-1&&u.special?.legend)||spawnUnit(-1,1,'Lendas',SL_LEGENDS_API.get('vesper'),{legend:true});
     delete enemyLegend.tacticalWorld;delete enemyLegend.tacticalDestination;delete enemyLegend.manualBuff;enemyLegend.lane=1;enemyLegend.x=7800;enemyLegend.sub=0;enemyLegend.subTarget=0;
     const enemyLegendWorld=map.unitPos(enemyLegend);api.handleMapTap({world:enemyLegendWorld,client:{x:220,y:200},canvas:{x:220,y:200}});
     const legendTargetTroop=troop.manualUnitTargetId===enemyLegend.id;
     const legendTargetLegend=legend.manualUnitTargetId===enemyLegend.id||legend.tacticalDestination?.unitId===enemyLegend.id;
 
-    // 4) Clicar numa tropa inimiga: o mesmo foco conjunto.
-    const enemyTroop=spawnUnit(-1,1,'Alienígenas',enemyData);enemyTroop.x=8300;enemyTroop.sub=2;enemyTroop.subTarget=2;
-    const enemyTroopWorld=map.unitPos(enemyTroop);api.handleMapTap({world:enemyTroopWorld,client:{x:230,y:210},canvas:{x:230,y:210}});
+    // 4) Tropa inimiga VISÍVEL: foco conjunto. O teste antigo a deixava longe o bastante
+    // para o fog novo ocultá-la, o que confundia 'controle direto' com 'visão'.
+    enemyLegend.x=9000;
+    const enemyTroop=spawnUnit(-1,1,'Alienígenas',enemyData);enemyTroop.x=7420;enemyTroop.sub=2;enemyTroop.subTarget=2;
+    const enemyTroopWorld=map.unitPos(enemyTroop),enemyTroopVisible=SL_VISION.isVisibleTo(1,enemyTroop);
+    api.handleMapTap({world:enemyTroopWorld,client:{x:230,y:210},canvas:{x:230,y:210}});
     const troopTargetTroop=troop.manualUnitTargetId===enemyTroop.id;
     const troopTargetLegend=legend.manualUnitTargetId===enemyTroop.id||legend.tacticalDestination?.unitId===enemyTroop.id;
+
+    // 4b) Tropa realmente oculta não pode ser selecionada por raio-X.
+    const hiddenTroop=spawnUnit(-1,2,'Alienígenas',{...enemyData,name:'Alvo Oculto QA'});hiddenTroop.x=16500;hiddenTroop.sub=-2;hiddenTroop.subTarget=-2;
+    const hiddenWorld=map.unitPos(hiddenTroop),hiddenVisible=SL_VISION.isVisibleTo(1,hiddenTroop),hiddenClicked=api.clickedTarget(hiddenWorld);
+    const hiddenTroopBlocked=!hiddenVisible&&!(hiddenClicked?.kind==='unit'&&hiddenClicked.unitId===hiddenTroop.id);
 
     // 5) Chão vazio da lane: ambos recebem ordem de movimento para o ponto.
     let blankTarget=null;
@@ -120,9 +138,9 @@ async function runCase(name,viewport){
     const jungleEnemyLegendOnly=(legend.tacticalDestination?.kind==='unit'&&legend.tacticalDestination?.unitId===enemyLegend.id)&&!troop.manualUnitTargetId&&!!troop.manualHold;
 
     const health=api.health();gameMode='robot';
-    return{towerTroop,towerLegend,jungleLegend,jungleTroopUntouched,legendTargetTroop,legendTargetLegend,troopTargetTroop,troopTargetLegend,blankTroop,blankLegend,jungleEnemyLegendOnly,health}
+    return{towerTroop,towerLegend,jungleLegend,jungleTroopUntouched,legendTargetTroop,legendTargetLegend,enemyTroopVisible,troopTargetTroop,troopTargetLegend,hiddenTroopBlocked,blankTroop,blankLegend,jungleEnemyLegendOnly,health}
   });
-  if(!targeting.towerTroop||!targeting.towerLegend||!targeting.jungleLegend||!targeting.jungleTroopUntouched||!targeting.legendTargetTroop||!targeting.legendTargetLegend||!targeting.troopTargetTroop||!targeting.troopTargetLegend||!targeting.blankTroop||!targeting.blankLegend||!targeting.jungleEnemyLegendOnly||!targeting.health?.directCommands||!targeting.health?.jungleLegendOnly)throw new Error(`${name}: controles diretos inválidos ${JSON.stringify(targeting)}`);
+  if(!targeting.towerTroop||!targeting.towerLegend||!targeting.jungleLegend||!targeting.jungleTroopUntouched||!targeting.legendTargetTroop||!targeting.legendTargetLegend||!targeting.enemyTroopVisible||!targeting.troopTargetTroop||!targeting.troopTargetLegend||!targeting.hiddenTroopBlocked||!targeting.blankTroop||!targeting.blankLegend||!targeting.jungleEnemyLegendOnly||!targeting.health?.directCommands||!targeting.health?.jungleLegendOnly)throw new Error(`${name}: controles diretos/visão inválidos ${JSON.stringify(targeting)}`);
 
   // 20x também precisa continuar responsivo; aqui já devem nascer ondas/unidades.
   await page.click('#simSpeedControls button[data-speed="20"]',{timeout:3000});
