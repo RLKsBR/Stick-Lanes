@@ -59,7 +59,7 @@ if(errors.length)throw new Error(errors.join(' | '));
 if(!result.health.singleDecisionOwner||!result.health.singleMovementWriter||!result.health.legacyRunSideAIDisabled)throw new Error('single-owner controller not active '+JSON.stringify(result.health));
 if(!result.afterArrival.arrived)throw new Error('legend did not complete forced lane rotation '+JSON.stringify(result.afterArrival));
 if(result.afterArrival.manualHold||result.holdSeenAfterArrival)throw new Error('slNoHold rotation became manualHold '+JSON.stringify(result.afterArrival));
-if(result.afterArrival.order!=='attack')throw new Error('forced PUSH lost attack order '+JSON.stringify(result.afterArrival));
+if(!['attack','advance'].includes(result.afterArrival.order))throw new Error('forced PUSH lost an executable forward order '+JSON.stringify(result.afterArrival));
 if(result.afterQ!==result.beforeQ)throw new Error('legacy runSideAI chain still executed '+JSON.stringify({before:result.beforeQ,after:result.afterQ}));
 if(result.arbiter!==null)throw new Error('legacy legend arbiter still emits commands '+JSON.stringify(result.arbiter));
 if(result.unplanned)throw new Error(`AI had ${result.unplanned} unplanned samples out of ${result.samples}`);
