@@ -1,5 +1,6 @@
 /* Stick Lanes — primeiras Lendas
-   Uma Lenda gratuita entra com a primeira onda de cada exército. */
+   Uma Lenda gratuita entra com a primeira onda de cada exército.
+   Orçamento de poder calibrado para manter as três dentro de uma faixa de ~10%. */
 'use strict';
 (function(){
 const LEGENDS=[
@@ -25,7 +26,7 @@ const LEGENDS=[
   },
   {
     id:'vesper',name:'Vesper',title:'A Serpente do Eclipse',role:'skirmisher',
-    hp:1025,def:165,atk:56,speed:5.35,range:10.5,rate:1.30,cost:0,gen:0,
+    hp:1100,def:165,atk:56,speed:5.35,range:10.5,rate:1.30,cost:0,gen:0,
     fantasy:'Serpente astral segmentada que caça por rasantes curtos, veneno e reposicionamento constante.',
     playstyle:'Veneno • rasante a cada 4 ataques • perseguição',
     palette:['#17182f','#4451a8','#ffb64d','#fff0bd'],
@@ -35,7 +36,16 @@ const LEGENDS=[
   }
 ];
 
+function balanceScore(legend){
+  const shell=legend.id==='karkinos'?1+(legend.special?.shellPct||0):1;
+  const defense=legend.def*(legend.id==='karkinos'?1.05:1);
+  const ehp=legend.hp*shell*(1+defense/125),dps=legend.atk/Math.max(.45,legend.rate);
+  const kit={nefal:1.18,karkinos:1.12,vesper:1.15}[legend.id]||1;
+  return Math.sqrt(ehp*dps)*(1+legend.range*.015)*(1+legend.speed*.025)*kit
+}
+const scores=Object.fromEntries(LEGENDS.map(l=>[l.id,balanceScore(l)]));
+const values=Object.values(scores),spread=Math.max(...values)/Math.min(...values)-1;
 function get(id){return LEGENDS.find(legend=>legend.id===id)||LEGENDS[0]}
 window.SL_LEGENDS=LEGENDS;
-window.SL_LEGENDS_API={get};
+window.SL_LEGENDS_API={get,balanceScore,balanceReport:()=>({scores:{...scores},spread,withinTenPercent:spread<=.10})};
 })();
