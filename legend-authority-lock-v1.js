@@ -1,128 +1,179 @@
-/* Stick Lanes — autoridade final de movimento da Lenda IA v2
-   Research pass 2: strict single-writer ownership, semantic destination matching,
-   longer commitment, arrival normalization and stuck recovery.
+/* Stick Lanes — IA funcional single-owner v3
+   Um único controlador decide plano, ordens, compras e rotação da Lenda.
+   Os controladores estratégicos antigos continuam carregados por compatibilidade,
+   mas deixam de participar do runSideAI: não existe mais rollback de comandos
+   concorrentes como mecanismo principal de controle.
 
-   Critical fix: an old controller could write a different point on the SAME lane.
-   v1 considered that command equivalent because only the lane matched, allowing
-   forward/backward oscillation. v2 accepts only destinations stamped slAuthority.
+   Princípios: plano persistente (Running), histerese para troca, fallback sempre
+   executável, destino com chegada explícita e hand-off sem manualHold.
 */
 'use strict';
 (function boot(){
-const map=window.SL_MOBA_SQUARE_V2;
-if(!map||!window.SL_LEGEND_INTENT_ARBITER||typeof simulationStep!=='function'){setTimeout(boot,40);return}
-if(window.SL_AI_LEGEND_AUTHORITY?.version>=2)return;
+const map=window.SL_MOBA_SQUARE_V2,tt=window.SL_TACTICAL_TARGETING;
+if(!map||!tt||typeof runSideAI!=='function'||typeof reset!=='function'){setTimeout(boot,40);return}
+if(window.SL_AI_FUNCTIONAL_CONTROLLER?.version>=3)return;
 
+const oldRunSideAI=runSideAI;
 const state={1:fresh(),'-1':fresh()};
-let executing=false,blockedBuffHijacks=0,restores=0,hijacksRejected=0,stuckRecoveries=0;
-function fresh(){return{intent:null,adoptedAt:-999,until:-999,lastSig:'',switches:0,blockedSwitches:0,watchSig:'',watchX:null,watchY:null,watchAt:-999}}
+let decisions=0,planSwitches=0,purchases=0,legendRotations=0,noHoldHandOffs=0,
+    staleHoldClears=0,stuckRecoveries=0,legacyCalls=0,planSeq=0;
+
+function fresh(){return{nextThink:0,nextBuy:0,plan:null,forcedUntil:-1,watchAt:-1,watchX:null,watchY:null,watchPlan:0,lastDecisionAt:-1,lastBuyAt:-1}}
 function isAI(side){return side===-1||gameMode==='robot'}
 function legend(side){return units.find(u=>!u.dead&&u.side===side&&u.special?.legend)||null}
-function sig(i){if(!i)return'';if(i.kind==='buff')return'buff:'+i.buffId;if(i.kind==='unit')return'unit:'+i.unitId;return i.kind+':'+i.lane+':'+targetRatioRaw(i)}
-function clear(u){delete u.manualBuff;delete u.manualTargetId;delete u.manualUnitTargetId;delete u.manualHold;delete u.tacticalDestination}
-function world(u){return map.unitPos(u)}
-function intentLife(i){if(!i)return 0;if(i.kind==='buff')return 24;if(i.kind==='base')return 11;if(i.kind==='finish')return 12;if(i.kind==='guard')return 10;if(i.kind==='unit')return 7;return 12}
-function emergency(i){return(i?.priority||0)>=109||['RETREAT','DISENGAGE','DEFEND_BASE','END_GAME'].includes(i?.term)}
-function intentValid(side,i){
- if(!i)return false;
- if(i.kind==='buff'){
-  const api=window.SL_BUFF_SYSTEM,z=api?.zones?.find(x=>x.id===i.buffId),s=z&&api?.zoneState?.(z.id,simTime);
-  return!!(z&&s?.owner!==side&&api?.canCapture?.(z,simTime));
+function baseRatio(side){return Math.max(0,Math.min(1,baseHp(side)/Math.max(1,BASE_HP)))}
+function frontTower(side,lane){
+ const list=aliveTowers(side,lane);if(!list.length)return null;
+ return [...list].sort((a,b)=>side===1?b.x-a.x:a.x-b.x)[0]
+}
+function towerRatio(s){return s?Math.max(0,Math.min(1,s.hp/Math.max(1,s.maxHp||s.hp))):0}
+function laneInfo(side,lane){
+ const own=armyPower(side,lane),foe=armyPower(-side,lane),sum=Math.max(40,own+foe),edge=(own-foe)/sum,
+       ownTower=frontTower(side,lane),enemyTower=frontTower(-side,lane),
+       ownWeak=ownTower?1-towerRatio(ownTower):1,enemyWeak=enemyTower?1-towerRatio(enemyTower):1,
+       ownWave=units.filter(u=>!u.dead&&u.side===side&&u.lane===lane&&u.minion).length,
+       foeWave=units.filter(u=>!u.dead&&u.side===-side&&u.lane===lane&&u.minion).length;
+ const danger=(-edge)*1.15+ownWeak*.68+(!ownTower?.25:0)+(foeWave>ownWave+2?.18:0);
+ const push=edge*.92+enemyWeak*.72+(!enemyTower?.42:0)+(ownWave>foeWave?.12:0);
+ return{lane,own,foe,edge,ownTower,enemyTower,ownWeak,enemyWeak,ownWave,foeWave,danger,push}
+}
+function snapshot(side){return{ownBase:baseRatio(side),enemyBase:baseRatio(-side),lanes:[0,1,2].map(l=>laneInfo(side,l))}}
+function bestBy(a,key){return [...a].sort((x,y)=>y[key]-x[key]||x.lane-y.lane)[0]}
+function candidate(side){
+ const s=snapshot(side),danger=bestBy(s.lanes,'danger'),push=bestBy(s.lanes,'push'),open=s.lanes.filter(x=>!x.enemyTower).sort((a,b)=>b.edge-a.edge)[0];
+ if(s.ownBase<.42||danger.danger>1.34)return{mode:'DEFEND',lane:danger.lane,score:8+danger.danger+(1-s.ownBase)*3,emergency:true,reason:'ameaça concreta à retaguarda',ctx:s};
+ if(open&&(s.enemyBase<.34||open.edge>-.02))return{mode:'FINISH',lane:open.lane,score:5.4+(1-s.enemyBase)*2+open.edge,emergency:s.enemyBase<.16,reason:'rota aberta para a base',ctx:s};
+ if(danger.danger>1.05&&push.push<.15)return{mode:'DEFEND',lane:danger.lane,score:2.8+danger.danger,emergency:false,reason:'estabilizar a lane sob pressão',ctx:s};
+ return{mode:'PUSH',lane:push.lane,score:3+push.push,emergency:false,reason:'melhor pressão sustentável',ctx:s}
+}
+function currentScore(side,p){
+ if(!p)return-999;const s=snapshot(side),l=s.lanes[p.lane];
+ if(p.mode==='DEFEND')return 2.8+l.danger;
+ if(p.mode==='FINISH')return(!l.enemyTower?5.4:2)+(1-s.enemyBase)*2+l.edge;
+ return 3+l.push
+}
+function samePlan(a,b){return!!a&&!!b&&a.mode===b.mode&&a.lane===b.lane}
+function accept(side,c,t,forced=false){
+ const s=state[side],old=s.plan,life=c.mode==='DEFEND'?10:c.mode==='FINISH'?13:15;
+ s.plan={id:++planSeq,mode:c.mode,lane:c.lane,score:c.score,reason:c.reason,startedAt:t,lockUntil:t+life,forced:!!forced};
+ s.lastDecisionAt=t;planSwitches+=old&&!samePlan(old,s.plan)?1:0;applyOrders(side,s.plan,c.ctx||snapshot(side));issueLegend(side,s.plan,t,true)
+}
+function decide(side,t){
+ const s=state[side],c=candidate(side);decisions++;
+ if(!s.plan){accept(side,c,t);return}
+ if(s.forcedUntil>t){applyOrders(side,s.plan,snapshot(side));return}
+ if(s.plan.forced&&s.forcedUntil<=t)s.plan.forced=false;
+ if(samePlan(s.plan,c)){s.plan.score=c.score;s.plan.reason=c.reason;applyOrders(side,s.plan,c.ctx);return}
+ if(c.emergency){accept(side,c,t);return}
+ if(t<s.plan.lockUntil){applyOrders(side,s.plan,c.ctx);return}
+ const oldScore=currentScore(side,s.plan);
+ if(c.score>oldScore+.38)accept(side,c,t);else applyOrders(side,s.plan,c.ctx)
+}
+function applyOrders(side,p,ctx=snapshot(side)){
+ for(let lane=0;lane<3;lane++){
+  const l=ctx.lanes[lane];
+  if(p.mode==='DEFEND')orders[side][lane]=lane===p.lane?(l.ownTower?'behind':'base'):(l.danger>1.12?'behind':'advance');
+  else if(p.mode==='FINISH')orders[side][lane]=lane===p.lane?'attack':(l.danger>1.18?'behind':'advance');
+  else orders[side][lane]=lane===p.lane?(l.edge>-.18||l.enemyWeak>.42?'attack':'advance'):(l.danger>1.18?'behind':'advance')
  }
- if(i.kind==='unit'){const v=units.find(x=>!x.dead&&x.id===i.unitId&&x.side===-side);return!!(v&&(!window.SL_VISION||window.SL_VISION.isVisibleTo(side,v)))}
- return Number.isInteger(i.lane)
+ if(side===1&&gameMode==='robot')syncOrderButtons(1)
 }
-function desiredOrder(i){
- if(!i)return null;if(i.kind==='base')return'base';if(i.kind==='finish')return'attack';if(i.kind==='guard'||i.term==='HOLD')return'behind';return i.aggressive?'attack':'advance'
+function clearManual(u,keepTravel=false){
+ delete u.manualBuff;delete u.manualTargetId;delete u.manualUnitTargetId;
+ if(u.manualHold){delete u.manualHold;staleHoldClears++}
+ if(!keepTravel){delete u.tacticalWorld;delete u.tacticalDestination}
 }
-function targetRatioRaw(i){
- if(!i)return.5;if(i.kind==='base')return i.lane===undefined?.14:.14;if(i.kind==='finish')return.78;if(i.kind==='guard')return Number.isFinite(i.t)?i.t:.30;return i.aggressive?.58:.34
+function routeRatio(side,mode){
+ if(mode==='DEFEND')return side===1?.28:.72;
+ if(mode==='FINISH')return side===1?.72:.28;
+ return side===1?.52:.48
 }
-function targetRatio(u,i){
- if(i.kind==='base')return u.side===1?.14:.86;
- if(i.kind==='finish')return u.side===1?.78:.22;
- if(i.kind==='guard')return Number.isFinite(i.t)?i.t:(u.side===1?.30:.70);
- return i.aggressive?(u.side===1?.58:.42):(u.side===1?.34:.66);
+function issueLegend(side,p,t,force=false){
+ const u=legend(side);if(!u||!p)return false;
+ if(u.manualHold){delete u.manualHold;staleHoldClears++}
+ const d=u.tacticalDestination;
+ if(u.tacticalWorld&&!force&&d?.slFunctional&&d.slPlanId===p.id)return true;
+ if(u.lane===p.lane&&!u.tacticalWorld){clearManual(u);state[side].watchAt=-1;return true}
+ const ratio=routeRatio(side,p.mode),point=map.routePoint(p.lane,ratio),a=map.unitPos(u);
+ clearManual(u);u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};
+ u.tacticalDestination={kind:'point',lane:p.lane,t:ratio,x:BASE_X[1]+ratio*(BASE_X[-1]-BASE_X[1]),world:{x:point.x,y:point.y},slNoHold:true,slFunctionalNoHold:true,slFunctional:true,slPlanId:p.id};
+ state[side].watchAt=t;state[side].watchX=a.x;state[side].watchY=a.y;state[side].watchPlan=p.id;legendRotations++;return true
 }
-function arrived(u,i){
- if(!u||!i)return true;
- if(i.kind==='buff'){
-  const z=window.SL_BUFF_SYSTEM?.zones?.find(x=>x.id===i.buffId);return!!(z&&window.SL_BUFF_SYSTEM?.containsBuff?.(z,world(u))&&u.manualBuff===i.buffId)
+function maintainLegend(side,t){
+ const s=state[side],p=s.plan,u=legend(side);if(!u||!p)return;
+ if(u.manualHold){delete u.manualHold;staleHoldClears++}
+ if(!u.tacticalWorld){
+  s.watchAt=-1;s.watchX=null;s.watchY=null;
+  if(u.lane!==p.lane)issueLegend(side,p,t,true);
+  else{delete u.manualBuff;delete u.manualTargetId;delete u.manualUnitTargetId;delete u.tacticalDestination}
+  return
  }
- if(i.kind==='unit')return false;
- if(u.tacticalWorld||u.tacticalDestination)return false;
- if(u.lane!==i.lane)return false;
- return orders?.[u.side]?.[i.lane]===desiredOrder(i)
-}
-function adopt(side,proposal,t,force=false){
- const s=state[side],cur=s.intent;
- if(!proposal)return cur;
- if(!cur||!intentValid(side,cur)||force||t>=s.until){
-  s.intent={...proposal};s.adoptedAt=t;s.until=t+intentLife(proposal);s.lastSig=sig(proposal);s.switches++;resetWatch(s);return s.intent
- }
- if(sig(cur)===sig(proposal)){
-  cur.priority=Math.max(cur.priority||0,proposal.priority||0);cur.term=proposal.term||cur.term;cur.reason=proposal.reason||cur.reason;return cur
- }
- if(emergency(proposal)&&(!emergency(cur)||(proposal.priority||0)>(cur.priority||0)+2)){
-  s.intent={...proposal};s.adoptedAt=t;s.until=t+intentLife(proposal);s.lastSig=sig(proposal);s.switches++;resetWatch(s);return s.intent
- }
- s.blockedSwitches++;return cur
-}
-function resetWatch(s){s.watchSig='';s.watchX=null;s.watchY=null;s.watchAt=-999}
-function expectedPoint(u,i){const t=Math.max(.03,Math.min(.97,targetRatio(u,i))),p=map.routePoint(i.lane,t);return{t,p,x:BASE_X[1]+t*(BASE_X[-1]-BASE_X[1])}}
-function issueLane(u,i){
- const {t,p,x}=expectedPoint(u,i);
- if(!u.tacticalWorld&&u.lane===i.lane){
-  clear(u);orders[u.side][i.lane]=desiredOrder(i);u.slAuthority={intent:sig(i),until:state[u.side].until,restores,blockedSwitches:state[u.side].blockedSwitches};return true
- }
- const a=world(u);clear(u);u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};u.tacticalDestination={kind:'point',lane:i.lane,x,t,world:{x:p.x,y:p.y},slNoHold:true,slAuthority:true,slIntent:sig(i)};return true
-}
-function issueUnit(u,i){
- const v=units.find(x=>!x.dead&&x.id===i.unitId&&x.side===-u.side);if(!v)return false;const a=world(u),b=world(v);clear(u);u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};u.tacticalDestination={kind:'unit',unitId:v.id,lane:v.lane,x:v.x,world:{x:b.x,y:b.y},slAuthority:true,slIntent:sig(i)};return true
-}
-function issueBuff(u,i){
- const api=window.SL_BUFF_SYSTEM,z=api?.zones?.find(x=>x.id===i.buffId);if(!z||!api?.canCapture?.(z,simTime))return false;
- executing=true;try{const ok=api.travelToZone(u,z);if(ok&&u.tacticalDestination){u.tacticalDestination.slAuthority=true;u.tacticalDestination.slIntent=sig(i)}return ok}finally{executing=false}
-}
-function authorityPointMatches(u,i,d){
- if(!d?.slAuthority||d.slIntent!==sig(i)||d.kind!=='point'||d.lane!==i.lane)return false;const expected=targetRatio(u,i);return !Number.isFinite(d.t)||Math.abs(d.t-expected)<=.055
-}
-function commandMatches(u,i){
- if(!u||!i)return true;
- if(i.kind==='buff')return u.manualBuff===i.buffId||u.tacticalDestination?.slAuthority&&u.tacticalDestination?.slIntent===sig(i)&&u.tacticalDestination?.kind==='buff';
- if(i.kind==='unit')return u.tacticalDestination?.slAuthority&&u.tacticalDestination?.slIntent===sig(i)&&u.tacticalDestination?.kind==='unit'&&u.tacticalDestination?.unitId===i.unitId;
- if(u.tacticalDestination)return authorityPointMatches(u,i,u.tacticalDestination);
- return arrived(u,i)
-}
-function issue(u,i){if(i.kind==='buff')return issueBuff(u,i);if(i.kind==='unit')return issueUnit(u,i);return issueLane(u,i)}
-function watchMovement(side,u,i,t){
- const s=state[side];if(!u.tacticalWorld||!u.tacticalDestination?.slAuthority){resetWatch(s);return}
- const w=u.tacticalWorld,signature=sig(i);
- if(s.watchSig!==signature||s.watchX===null){s.watchSig=signature;s.watchX=w.x;s.watchY=w.y;s.watchAt=t;return}
+ const d=u.tacticalDestination;
+ if(!d?.slFunctional||d.slPlanId!==p.id){issueLegend(side,p,t,true);return}
+ const w=u.tacticalWorld;
+ if(s.watchAt<0||s.watchPlan!==p.id){s.watchAt=t;s.watchX=w.x;s.watchY=w.y;s.watchPlan=p.id;return}
  const moved=Math.hypot(w.x-s.watchX,w.y-s.watchY);
- if(moved>=28){s.watchX=w.x;s.watchY=w.y;s.watchAt=t;return}
- if(t-s.watchAt<2.8)return;
- stuckRecoveries++;s.watchX=w.x;s.watchY=w.y;s.watchAt=t;executing=true;try{issue(u,i)}finally{executing=false}
+ if(moved>=30){s.watchAt=t;s.watchX=w.x;s.watchY=w.y;return}
+ if(t-s.watchAt>=3.2&&t>=(u.stunUntil||0)){stuckRecoveries++;issueLegend(side,p,t,true)}
 }
-function enforce(side,t){
- if(!isAI(side))return;const u=legend(side);if(!u){state[side].intent=null;resetWatch(state[side]);return}
- const proposal=window.SL_LEGEND_INTENT_ARBITER?.get?.(side)||null,i=adopt(side,proposal,t);if(!i||!intentValid(side,i))return;
- if(commandMatches(u,i)){watchMovement(side,u,i,t);return}
- if(u.tacticalDestination&&!u.tacticalDestination.slAuthority)hijacksRejected++;
- restores++;executing=true;try{issue(u,i)}finally{executing=false}
- u.slAuthority={intent:sig(i),until:state[side].until,restores,blockedSwitches:state[side].blockedSwitches,hijacksRejected,stuckRecoveries};watchMovement(side,u,i,t)
+function buy(side,t){
+ const roster=sideRoster(side),ready=aiSpawnCd[side],usage=aiUse[side];if(!roster?.length)return;
+ const available=roster.filter(({fac,u})=>sideGold(side)>=u.cost&&t>=(ready[fac+'|'+u.name]||0)&&canSpawnUnit(side,u));if(!available.length)return;
+ const own=units.filter(v=>!v.dead&&v.side===side&&!v.minion&&!v.special?.legend),tanks=own.filter(v=>v.role==='tank'||v.role==='fighter').length,ranged=own.filter(v=>v.role==='ranged'||v.role==='siege').length;
+ let best=null,bestScore=-Infinity;
+ for(const x of available){
+  const key=x.fac+'|'+x.u.name,novelty=(usage[key]||0)===0?1.22:1/Math.pow(1+(usage[key]||0)*.14,.32),
+        frontNeed=tanks<Math.max(2,ranged*.7)&&(x.u.role==='tank'||x.u.role==='fighter')?1.28:1,
+        score=unitValue(x.u)*novelty*frontNeed;
+  if(score>bestScore){best=x;bestScore=score}
+ }
+ if(!best)return;const key=best.fac+'|'+best.u.name,p=state[side].plan,ctx=snapshot(side),weak=[...ctx.lanes].sort((a,b)=>a.edge-b.edge||b.danger-a.danger)[0];
+ let lane=p?.mode==='DEFEND'?p.lane:(weak.edge<-.42?weak.lane:(p?.lane??weak.lane));
+ spendSideGold(side,best.u.cost);ready[key]=t+best.u.gen;usage[key]=(usage[key]||0)+1;spawnUnit(side,lane,best.fac,best.u);purchases++;state[side].lastBuyAt=t
+}
+function updateLabel(){
+ const el=document.querySelector('#modeStatus');if(!el)return;
+ if(gameMode==='robot')el.textContent='Simulação assistida • IA funcional single-owner v3';
+ else if(el.textContent.includes('IA adaptativa'))el.textContent='Player versus IA • IA funcional v3'
 }
 
-const buffs=window.SL_BUFF_SYSTEM;
-if(buffs?.travelToZone){
- const rawTravel=buffs.travelToZone;
- buffs.travelToZone=function(u,z){
-  if(u?.special?.legend&&isAI(u.side)&&!executing){blockedBuffHijacks++;return false}
-  return rawTravel(u,z)
- };
+// A causa concreta da paralisia anterior: tactical-targeting transformava uma
+// viagem slNoHold concluída em manualHold. O wrapper preserva o clique manual do
+// jogador e só remove o hold criado na chegada de viagens da IA single-owner.
+const rawHandle=tt.handleUnit.bind(tt);
+tt.handleUnit=function(u,dt,t){
+ const noHold=!!(u?.special?.legend&&isAI(u.side)&&u.tacticalDestination?.slFunctionalNoHold);
+ const r=rawHandle(u,dt,t);
+ if(noHold&&!u.tacticalWorld&&u.manualHold){delete u.manualHold;delete u.manualBuff;delete u.manualTargetId;delete u.manualUnitTargetId;noHoldHandOffs++}
+ return r
+};
+
+// Desliga a fonte do conflito: a cadeia antiga de runSideAI não é mais chamada.
+// O arbiter legado também fica sem proposta para os wrappers de simulationStep.
+runSideAI=function(side,t){
+ if(!isAI(side))return;const s=state[side];
+ if(t>=s.nextThink){s.nextThink=t+1;decide(side,t);updateLabel()}
+ if(t>=s.nextBuy){s.nextBuy=t+.7;buy(side,t)}
+ maintainLegend(side,t)
+};
+if(window.SL_LEGEND_INTENT_ARBITER){
+ window.SL_LEGEND_INTENT_ARBITER.get=()=>null;
+ window.SL_LEGEND_INTENT_ARBITER.reconsider=()=>null
 }
 
-const prevStep=simulationStep;
-simulationStep=function(dt){for(const side of[1,-1])enforce(side,simTime);prevStep(dt);for(const side of[1,-1])enforce(side,simTime)};
-const prevReset=reset;reset=function(){state[1]=fresh();state[-1]=fresh();blockedBuffHijacks=0;restores=0;hijacksRejected=0;stuckRecoveries=0;return prevReset()};
-window.SL_AI_LEGEND_AUTHORITY={version:2,get:side=>state[side],health(){return{loaded:true,singleAuthority:true,strictDestinationOwnership:true,blockedBuffHijacks,restores,hijacksRejected,stuckRecoveries,red:state[-1],orange:gameMode==='robot'?state[1]:null}}};
+const prevReset=reset;
+reset=function(){
+ state[1]=fresh();state[-1]=fresh();decisions=0;planSwitches=0;purchases=0;legendRotations=0;noHoldHandOffs=0;staleHoldClears=0;stuckRecoveries=0;planSeq=0;
+ return prevReset()
+};
+function forcePlan(side,lane,mode='PUSH',seconds=30){
+ if(!isAI(side)||!Number.isInteger(lane)||lane<0||lane>2)return false;const t=simTime,s=state[side],c={mode,lane,score:999,reason:'qa/forced',emergency:true,ctx:snapshot(side)};
+ accept(side,c,t,true);s.forcedUntil=t+Math.max(1,seconds);return true
+}
+function health(){
+ const q=window.SL_AI_LEGACY_QUARANTINE?.health?.();
+ return{loaded:true,version:3,singleDecisionOwner:true,singleMovementWriter:true,legacyRunSideAIDisabled:true,legacyCalls,decisions,planSwitches,purchases,legendRotations,noHoldHandOffs,staleHoldClears,stuckRecoveries,legacyQuarantinePasses:q?.passes??null,red:state[-1],orange:gameMode==='robot'?state[1]:null}
+}
+window.SL_AI_FUNCTIONAL_CONTROLLER={version:3,forcePlan,get:side=>state[side],health,legacyRunSideAI:oldRunSideAI};
+window.SL_AI_LEGEND_AUTHORITY={version:3,get:side=>state[side],health};
 })();
