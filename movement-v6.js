@@ -1,7 +1,9 @@
-/* Stick Lanes — movimento v6: deslocamento global 6x e desvio de estruturas */
+/* Stick Lanes — movimento v6: deslocamento global 13,2x e desvio de estruturas */
 'use strict';
 (function(){
-const MOVE_MULT=6.0;
+/* O jogo já operava em 6x. O pedido de +2,2x é multiplicativo sobre o estado
+   atual: 6 * 2,2 = 13,2 vezes a velocidade-base original. */
+const MOVE_MULT=13.2;
 const SIDE_ROUTE=.77;
 const ALL_SUBS=[-2,-1,0,1,2];
 function nearestOpenSub(u,open){
@@ -21,7 +23,7 @@ move=function(u,x,dt){
   let d=x-u.x;if(Math.abs(d)<7){u.runTime=0;return}
   let now=simTime,slow=now<u.slowUntil?.92:1;
   routeAroundStructures(u,Math.sign(d));
-  let lateral=(u.subTarget??u.sub)-u.sub,maxLateral=3.2*dt;
+  let lateral=(u.subTarget??u.sub)-u.sub,maxLateral=7.04*dt;
   if(Math.abs(lateral)>.001)u.sub+=Math.sign(lateral)*Math.min(Math.abs(lateral),maxLateral);
   /* top e bot têm o mesmo comprimento; mid continua sendo a rota curta. */
   let route=u.lane===1?1:SIDE_ROUTE;
