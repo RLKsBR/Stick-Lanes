@@ -18,10 +18,11 @@ Motivação: em teste real, o time Laranja perdeu em ~8 minutos e a Lenda ficou 
 
 ## Diagnóstico encontrado no código
 
-A pesquisa levou a uma auditoria da cadeia real de execução e revelou dois defeitos concretos:
+A pesquisa levou a uma auditoria da cadeia real de execução e revelou três defeitos concretos:
 
 1. `live-strategy-ai-v1.js` e `macro-rotation-ai-v1.js` ainda alteravam diretamente `tacticalWorld`, `tacticalDestination`, lane e alvos da Lenda antes do Research Director terminar o tick. Portanto havia **mais de um escritor físico**, apesar da intenção arquitetural de autoridade única.
 2. `legend-authority-lock-v1.js` v1 considerava um destino correto quando ele apontava para a **mesma lane**, mesmo que outro controlador tivesse trocado o ponto da lane de, por exemplo, posição defensiva para ofensiva. Isso permitia exatamente o ciclo “vai → volta → vai → volta” no Top.
+3. Os mesmos módulos legados ainda reescreviam `orders[side]` antes/depois da decisão nova. Isso fazia o time alternar postura de lane mesmo quando o Research Director mantinha o plano. A quarentena v2 agora preserva economia, compra e aprendizado legados, mas devolve ao Research Director a propriedade exclusiva das ordens de equipe.
 
 ## 100 pontos pesquisados e aplicados
 
@@ -147,10 +148,10 @@ A pesquisa levou a uma auditoria da cadeia real de execução e revelou dois def
 
 ## Aplicação no código
 
-- `legacy-legend-quarantine-v2.js`: coloca `live-strategy` e `macro-rotation` em quarentena para movimento de Lenda. Compras, aprendizado, economia e ordens de tropas continuam funcionando; mutações físicas legadas da Lenda são revertidas.
+- `legacy-legend-quarantine-v2.js`: coloca `live-strategy` e `macro-rotation` em quarentena estratégica. Compras, economia e aprendizado legados continuam funcionando; mutações físicas da Lenda **e reescritas legadas de `orders[side]`** são revertidas antes de o Research Director assumir o tick.
 - `ai-plan-stability-v2.js`: compromisso mínimo, margem de troca, progresso por plano, bloqueio de reversão durante rotação e restauração das ordens do plano comprometido.
 - `legend-authority-lock-v1.js` v2: destino precisa ser `slAuthority`; mesma lane com ponto diferente não passa mais na validação; chegada é semântica; watchdog recupera ausência real de movimento.
 - `vision-walls-v1.js`: mantém waypoint local e desvio físico de paredes.
-- `tests/ai-stability.mjs`: regressão específica para o bug de hijack na mesma lane e telemetria da nova pilha.
+- `tests/ai-stability.mjs`: regressão específica para o bug de hijack na mesma lane, simulação acelerada longa e telemetria da nova pilha.
 
 A meta desta versão não é fazer a IA “pensar mais vezes”; é fazer cada decisão válida **convergir e terminar**, em vez de múltiplos cérebros reescreverem o destino.
