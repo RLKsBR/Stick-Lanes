@@ -24,7 +24,11 @@ function targetWorld(target){
 function targetInJungle(target){
  if(target?.kind==='buff')return true;
  if(target?.kind!=='unit')return false;
- const w=targetWorld(target);return!!(w&&zoneAt(w))
+ /* Polígonos de buff podem encostar nas sub-lanes. Uma unidade NÃO vira jungle
+    só porque o desenho do buff passa sob ela: ela precisa ter realmente saído
+    da lane pelo sistema tático. Isso preserva comandos de tropa nas cinco
+    sub-lanes e mantém 'jungle = só Lenda' para quem está fisicamente na jungle. */
+ const u=anyTargetUnit(target);return!!(u&&(u.tacticalWorld||u.manualBuff))
 }
 function buffReady(target){return target.kind!=='buff'||!window.SL_BUFF_SYSTEM?.canCapture||window.SL_BUFF_SYSTEM.canCapture(target.buff,simTime)}
 function clearManual(u){delete u.manualTargetId;delete u.manualUnitTargetId;delete u.manualHold;delete u.tacticalDestination;delete u.manualBuff}
