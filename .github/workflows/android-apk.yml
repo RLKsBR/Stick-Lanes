@@ -41,11 +41,12 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.55.0
           npx playwright install chromium
 
-      - name: Run real Chromium assisted-mode test
+      - name: Run real Chromium assisted-mode tests
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/stick-lanes-http.log 2>&1 &
           sleep 1
           node tests/browser-assisted.mjs
+          node tests/ai-stability.mjs
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
