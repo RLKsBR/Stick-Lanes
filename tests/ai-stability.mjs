@@ -18,6 +18,10 @@ await page.click('#simSpeedControls button[data-speed="1"]');
 await page.waitForTimeout(120);
 
 const regression=await page.evaluate(()=>{
+  const compactStability=()=>{
+    const h=SL_AI_PLAN_STABILITY.health(),pick=s=>s?{committed:s.committed?.key||null,committedAt:s.committedAt,lastProgressAt:s.lastProgressAt,lastMetric:s.lastMetric,rejectedSwitches:s.rejectedSwitches,acceptedSwitches:s.acceptedSwitches,reversalBlocks:s.reversalBlocks,emergencySwitches:s.emergencySwitches,lastProposal:s.lastProposal}:null;
+    return{loaded:h.loaded,commitment:h.commitment,red:pick(h.red),orange:pick(h.orange)}
+  };
   const map=SL_MOBA_SQUARE_V2,u=units.find(x=>!x.dead&&x.side===1&&x.special?.legend);
   if(!u)throw new Error('orange legend missing after explicit wait');
   const st=SL_AI_LEGEND_AUTHORITY.get(1),lane=0;
@@ -38,7 +42,7 @@ const regression=await page.evaluate(()=>{
     before,after:after.hijacksRejected,
     destination:d?{kind:d.kind,lane:d.lane,t:d.t,slAuthority:d.slAuthority,slIntent:d.slIntent}:null,
     quarantine:SL_AI_LEGACY_QUARANTINE.health(),
-    stability:SL_AI_PLAN_STABILITY.health(),
+    stability:compactStability(),
     simTime
   }
 });
@@ -58,8 +62,12 @@ let violations=0,samples=0,last=null;
 for(let i=0;i<145;i++){
   await page.waitForTimeout(180);
   const s=await page.evaluate(()=>{
+    const compactStability=()=>{
+      const h=SL_AI_PLAN_STABILITY.health(),pick=s=>s?{committed:s.committed?.key||null,committedAt:s.committedAt,lastProgressAt:s.lastProgressAt,lastMetric:s.lastMetric,rejectedSwitches:s.rejectedSwitches,acceptedSwitches:s.acceptedSwitches,reversalBlocks:s.reversalBlocks,emergencySwitches:s.emergencySwitches,lastProposal:s.lastProposal}:null;
+      return{loaded:h.loaded,commitment:h.commitment,red:pick(h.red),orange:pick(h.orange)}
+    };
     const list=units.filter(u=>!u.dead&&u.special?.legend&&(u.side===-1||gameMode==='robot'&&u.side===1));
-    return{simTime,alive:running,base1:playerBase,base2:enemyBase,bad:list.filter(u=>u.tacticalDestination&&!u.tacticalDestination.slAuthority).map(u=>({side:u.side,kind:u.tacticalDestination.kind,lane:u.tacticalDestination.lane,t:u.tacticalDestination.t})),authority:SL_AI_LEGEND_AUTHORITY.health(),stability:SL_AI_PLAN_STABILITY.health(),quarantine:SL_AI_LEGACY_QUARANTINE.health()}
+    return{simTime,alive:running,base1:playerBase,base2:enemyBase,bad:list.filter(u=>u.tacticalDestination&&!u.tacticalDestination.slAuthority).map(u=>({side:u.side,kind:u.tacticalDestination.kind,lane:u.tacticalDestination.lane,t:u.tacticalDestination.t})),authority:SL_AI_LEGEND_AUTHORITY.health(),stability:compactStability(),quarantine:SL_AI_LEGACY_QUARANTINE.health()}
   });
   last=s;samples++;violations+=s.bad.length;
   if(!s.alive||s.simTime>=targetSimTime)break;
