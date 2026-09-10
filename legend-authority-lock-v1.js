@@ -10,7 +10,7 @@
 'use strict';
 (function boot(){
 const map=window.SL_MOBA_SQUARE_V2,tt=window.SL_TACTICAL_TARGETING;
-if(!map||!tt||typeof runSideAI!=='function'||typeof reset!=='function'){setTimeout(boot,40);return}
+if(!map||!tt||!window.SL_AI_SIDE_VISION||typeof runSideAI!=='function'||typeof reset!=='function'){throw new Error('Legend controller: missing map, targeting or perception dependency')}
 if(window.SL_AI_FUNCTIONAL_CONTROLLER?.version>=3)return;
 
 const oldRunSideAI=runSideAI;
@@ -27,27 +27,25 @@ function frontTower(side,lane){
  return [...list].sort((a,b)=>side===1?b.x-a.x:a.x-b.x)[0]
 }
 function towerRatio(s){return s?Math.max(0,Math.min(1,s.hp/Math.max(1,s.maxHp||s.hp))):0}
-function laneInfo(side,lane){
- const own=armyPower(side,lane),foe=armyPower(-side,lane),sum=Math.max(40,own+foe),edge=(own-foe)/sum,
+function laneInfo(side,lane,perception){
+ const {own,foe,ownWave,foeWave}=perception,sum=Math.max(40,own+foe),edge=(own-foe)/sum,
        ownTower=frontTower(side,lane),enemyTower=frontTower(-side,lane),
-       ownWeak=ownTower?1-towerRatio(ownTower):1,enemyWeak=enemyTower?1-towerRatio(enemyTower):1,
-       ownWave=units.filter(u=>!u.dead&&u.side===side&&u.lane===lane&&u.minion).length,
-       foeWave=units.filter(u=>!u.dead&&u.side===-side&&u.lane===lane&&u.minion).length;
+       ownWeak=ownTower?1-towerRatio(ownTower):1,enemyWeak=enemyTower?1-towerRatio(enemyTower):1;
  const danger=(-edge)*1.15+ownWeak*.68+(!ownTower ? .25 : 0)+(foeWave>ownWave+2 ? .18 : 0);
  const push=edge*.92+enemyWeak*.72+(!enemyTower ? .42 : 0)+(ownWave>foeWave ? .12 : 0);
  return{lane,own,foe,edge,ownTower,enemyTower,ownWeak,enemyWeak,ownWave,foeWave,danger,push}
 }
-function snapshot(side){return{ownBase:baseRatio(side),enemyBase:baseRatio(-side),lanes:[0,1,2].map(l=>laneInfo(side,l))}}
+function snapshot(side){const perceived=SL_AI_SIDE_VISION.capture(side);return{ownBase:baseRatio(side),enemyBase:baseRatio(-side),lanes:[0,1,2].map(l=>laneInfo(side,l,perceived[l]))}}
 function bestBy(a,key){return [...a].sort((x,y)=>y[key]-x[key]||x.lane-y.lane)[0]}
 function candidate(side){
  const s=snapshot(side),danger=bestBy(s.lanes,'danger'),push=bestBy(s.lanes,'push'),open=s.lanes.filter(x=>!x.enemyTower).sort((a,b)=>b.edge-a.edge)[0];
- if(s.ownBase<.42||danger.danger>1.34)return{mode:'DEFEND',lane:danger.lane,score:8+danger.danger+(1-s.ownBase)*3,emergency:true,reason:'ameaça concreta à retaguarda',ctx:s};
+ if(danger.foe>0&&(s.ownBase<.42||danger.danger>1.34))return{mode:'DEFEND',lane:danger.lane,score:8+danger.danger+(1-s.ownBase)*3,emergency:true,reason:'ameaça concreta à retaguarda',ctx:s};
  if(open&&(s.enemyBase<.34||open.edge>-.02))return{mode:'FINISH',lane:open.lane,score:5.4+(1-s.enemyBase)*2+open.edge,emergency:s.enemyBase<.16,reason:'rota aberta para a base',ctx:s};
  if(danger.danger>1.05&&push.push<.15)return{mode:'DEFEND',lane:danger.lane,score:2.8+danger.danger,emergency:false,reason:'estabilizar a lane sob pressão',ctx:s};
  return{mode:'PUSH',lane:push.lane,score:3+push.push,emergency:false,reason:'melhor pressão sustentável',ctx:s}
 }
-function currentScore(side,p){
- if(!p)return-999;const s=snapshot(side),l=s.lanes[p.lane];
+function currentScore(side,p,s=snapshot(side)){
+ if(!p)return-999;const l=s.lanes[p.lane];
  if(p.mode==='DEFEND')return 2.8+l.danger;
  if(p.mode==='FINISH')return(!l.enemyTower?5.4:2)+(1-s.enemyBase)*2+l.edge;
  return 3+l.push
@@ -58,16 +56,23 @@ function accept(side,c,t,forced=false){
  s.plan={id:++planSeq,mode:c.mode,lane:c.lane,score:c.score,reason:c.reason,startedAt:t,lockUntil:t+life,forced:!!forced};
  s.lastDecisionAt=t;planSwitches+=old&&!samePlan(old,s.plan)?1:0;applyOrders(side,s.plan,c.ctx||snapshot(side));issueLegend(side,s.plan,t,true)
 }
+const history=[];
+function recordDecision(side,c,t,outcome){
+ const p=state[side].plan;
+ const entry={t,side,outcome,selected:{mode:p.mode,lane:p.lane,score:currentScore(side,p,c.ctx)},candidate:{mode:c.mode,lane:c.lane,score:c.score,reason:c.reason},lockRemaining:Math.max(0,p.lockUntil-t),lanes:c.ctx.lanes.map(l=>({lane:l.lane,own:l.own,foe:l.foe,ownWave:l.ownWave,foeWave:l.foeWave,danger:l.danger,push:l.push}))};
+ state[side].lastDecision=entry;history.push(entry);if(history.length>240)history.shift();
+}
 function decide(side,t){
  const s=state[side],c=candidate(side);decisions++;
- if(!s.plan){accept(side,c,t);return}
- if(s.forcedUntil>t){applyOrders(side,s.plan,snapshot(side));return}
+ const record=outcome=>recordDecision(side,c,t,outcome);
+ if(!s.plan){accept(side,c,t);record('initial');return}
+ if(s.forcedUntil>t){applyOrders(side,s.plan,c.ctx);record('forced-lock');return}
  if(s.plan.forced&&s.forcedUntil<=t)s.plan.forced=false;
- if(samePlan(s.plan,c)){s.plan.score=c.score;s.plan.reason=c.reason;applyOrders(side,s.plan,c.ctx);return}
- if(c.emergency){accept(side,c,t);return}
- if(t<s.plan.lockUntil){applyOrders(side,s.plan,c.ctx);return}
- const oldScore=currentScore(side,s.plan);
- if(c.score>oldScore+.38)accept(side,c,t);else applyOrders(side,s.plan,c.ctx)
+ if(samePlan(s.plan,c)){s.plan.score=c.score;s.plan.reason=c.reason;applyOrders(side,s.plan,c.ctx);record('same-plan');return}
+ if(c.emergency){accept(side,c,t);record('emergency');return}
+ if(t<s.plan.lockUntil){applyOrders(side,s.plan,c.ctx);record('commitment');return}
+ const oldScore=currentScore(side,s.plan,c.ctx);
+ if(c.score>oldScore+.38){accept(side,c,t);record('better-score')}else{applyOrders(side,s.plan,c.ctx);record('hysteresis')}
 }
 function applyOrders(side,p,ctx=snapshot(side)){
  for(let lane=0;lane<3;lane++){
@@ -81,7 +86,7 @@ function applyOrders(side,p,ctx=snapshot(side)){
 function clearManual(u,keepTravel=false){
  delete u.manualBuff;delete u.manualTargetId;delete u.manualUnitTargetId;
  if(u.manualHold){delete u.manualHold;staleHoldClears++}
- if(!keepTravel){delete u.tacticalWorld;delete u.tacticalDestination}
+ if(!keepTravel){delete u.tacticalWorld;delete u.tacticalDestination;window.SL_JUNGLE_PATHFINDING?.resetPath?.(u)}
 }
 function routeRatio(side,mode){
  if(mode==='DEFEND')return side===1 ? .28 : .72;
@@ -97,7 +102,7 @@ function issueLegend(side,p,t,force=false){
  const ratio=routeRatio(side,p.mode),point=map.routePoint(p.lane,ratio),a=map.unitPos(u);
  clearManual(u);u.tacticalWorld={x:a.x,y:a.y,a:a.a||0};
  u.tacticalDestination={kind:'point',lane:p.lane,t:ratio,x:BASE_X[1]+ratio*(BASE_X[-1]-BASE_X[1]),world:{x:point.x,y:point.y},slNoHold:true,slFunctionalNoHold:true,slFunctional:true,slPlanId:p.id};
- state[side].watchAt=t;state[side].watchX=a.x;state[side].watchY=a.y;state[side].watchPlan=p.id;legendRotations++;return true
+ state[side].watchAt=t;state[side].watchRemaining=null;state[side].watchX=a.x;state[side].watchY=a.y;state[side].watchPlan=p.id;legendRotations++;return true
 }
 function maintainLegend(side,t){
  const s=state[side],p=s.plan,u=legend(side);if(!u||!p)return;
@@ -112,9 +117,11 @@ function maintainLegend(side,t){
  if(!d?.slFunctional||d.slPlanId!==p.id){issueLegend(side,p,t,true);return}
  const w=u.tacticalWorld;
  if(s.watchAt<0||s.watchPlan!==p.id){s.watchAt=t;s.watchX=w.x;s.watchY=w.y;s.watchPlan=p.id;return}
- const moved=Math.hypot(w.x-s.watchX,w.y-s.watchY);
- if(moved>=30){s.watchAt=t;s.watchX=w.x;s.watchY=w.y;return}
- if(t-s.watchAt>=3.2&&t>=(u.stunUntil||0)){stuckRecoveries++;issueLegend(side,p,t,true)}
+ // Distance along the route decreases on real progress, including detours.
+ const remaining=window.SL_JUNGLE_PATHFINDING?.remainingDistance?.(u);
+ if(t<(u.stunUntil||0)){s.watchAt=t;s.watchRemaining=remaining;return}
+ if(s.watchRemaining==null||Number.isFinite(remaining)&&s.watchRemaining-remaining>=30){s.watchAt=t;s.watchRemaining=remaining;return}
+ if(t-s.watchAt>=3.2){stuckRecoveries++;history.push({t,side,outcome:'stuck-recovery',planId:p.id,remaining});if(history.length>240)history.shift();issueLegend(side,p,t,true)}
 }
 function buy(side,t){
  const roster=sideRoster(side),ready=aiSpawnCd[side],usage=aiUse[side];if(!roster?.length)return;
@@ -132,6 +139,7 @@ function buy(side,t){
  spendSideGold(side,best.u.cost);ready[key]=t+best.u.gen;usage[key]=(usage[key]||0)+1;spawnUnit(side,lane,best.fac,best.u);purchases++;state[side].lastBuyAt=t
 }
 function updateLabel(){
+ window.SL_AI_DIAGNOSTICS?.update?.();
  const el=document.querySelector('#modeStatus');if(!el)return;
  if(gameMode==='robot')el.textContent='Simulação assistida • IA funcional single-owner v3';
  else if(el.textContent.includes('IA adaptativa'))el.textContent='Player versus IA • IA funcional v3'
@@ -163,17 +171,17 @@ if(window.SL_LEGEND_INTENT_ARBITER){
 
 const prevReset=reset;
 reset=function(){
- state[1]=fresh();state[-1]=fresh();decisions=0;planSwitches=0;purchases=0;legendRotations=0;noHoldHandOffs=0;staleHoldClears=0;stuckRecoveries=0;planSeq=0;
+ history.length=0;state[1]=fresh();state[-1]=fresh();decisions=0;planSwitches=0;purchases=0;legendRotations=0;noHoldHandOffs=0;staleHoldClears=0;stuckRecoveries=0;planSeq=0;
  return prevReset()
 };
 function forcePlan(side,lane,mode='PUSH',seconds=30){
- if(!isAI(side)||!Number.isInteger(lane)||lane<0||lane>2)return false;const t=simTime,s=state[side],c={mode,lane,score:999,reason:'qa/forced',emergency:true,ctx:snapshot(side)};
+ if(![1,-1].includes(side)||!isAI(side)||!Number.isInteger(lane)||lane<0||lane>2||!['PUSH','DEFEND','FINISH'].includes(mode)||!Number.isFinite(seconds))return false;const t=simTime,s=state[side],c={mode,lane,score:999,reason:'qa/forced',emergency:true,ctx:snapshot(side)};
  accept(side,c,t,true);s.forcedUntil=t+Math.max(1,seconds);return true
 }
 function health(){
  const q=window.SL_AI_LEGACY_QUARANTINE?.health?.();
  return{loaded:true,version:3,singleDecisionOwner:true,singleMovementWriter:true,legacyRunSideAIDisabled:true,legacyCalls,decisions,planSwitches,purchases,legendRotations,noHoldHandOffs,staleHoldClears,stuckRecoveries,legacyQuarantinePasses:q?.passes??null,red:state[-1],orange:gameMode==='robot'?state[1]:null}
 }
-window.SL_AI_FUNCTIONAL_CONTROLLER={version:3,forcePlan,get:side=>state[side],health,legacyRunSideAI:oldRunSideAI};
+window.SL_AI_FUNCTIONAL_CONTROLLER={version:3,forcePlan,inspect:side=>snapshot(side),trace:()=>JSON.parse(JSON.stringify(history)),get:side=>state[side],health,legacyRunSideAI:oldRunSideAI};
 window.SL_AI_LEGEND_AUTHORITY={version:3,get:side=>state[side],health};
 })();

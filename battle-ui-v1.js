@@ -29,8 +29,10 @@ function setAutomatic(){
  clearManual(legend);
  if(legend.tacticalWorld){
    const near=map.nearestRoutePoint(map.unitPos(legend)),lane=near.lane,t=clampUI(near.t,.04,.96),p=map.routePoint(lane,t),x=BASE_X[1]+t*(BASE_X[-1]-BASE_X[1]);
-   legend.slAutoReturn={lane,t,x,world:{x:p.x,y:p.y}};
- }else delete legend.slAutoReturn;
+   legend.tacticalDestination={kind:'point',lane,t,x,world:{x:p.x,y:p.y},slNoHold:true};
+   window.SL_JUNGLE_PATHFINDING?.resetPath?.(legend);
+ }
+ delete legend.slAutoReturn;
  closeMenus()
 }
 function sendBuff(id){
@@ -55,21 +57,10 @@ function refreshDock(){
  const api=window.SL_BUFF_SYSTEM;dock.querySelectorAll('[data-buff]').forEach(b=>{const zone=api?.zones?.find(z=>z.id===b.dataset.buff),state=zone&&api?.zoneState?.(zone.id,simTime),ready=!!legend&&!!zone&&(!api.canCapture||api.canCapture(zone,simTime));b.disabled=!ready;b.title=state?.def?.name?`${state.def.name} • ${state.label||''}`:(state?.label||b.dataset.buff.toUpperCase())})
 }
 
-/* Automático saindo da jungle: volta fisicamente à lane mais próxima e então
-   libera a unidade para o comportamento padrão da lane, sem teleporte. */
-const previousHandleUnit=tactical.handleUnit;
-tactical.handleUnit=function(u,dt,t){
- if(u?.side===PLAYER&&u.special?.legend&&u.slAutoReturn&&u.tacticalWorld){
-   const target=u.slAutoReturn,w=target.world,a=u.tacticalWorld,dx=w.x-a.x,dy=w.y-a.y,d=Math.hypot(dx,dy),routeScale=map.routeLengths[1]/(BASE_X[-1]-BASE_X[1]),speed=Math.max(55,u.speed*MOVE_SCALE*(window.SL_MOVEMENT_V6?.multiplier||1)*routeScale),step=Math.min(d,speed*dt);
-   if(d>14){a.x+=dx/d*step;a.y+=dy/d*step;a.a=Math.atan2(dy,dx);u.lastMoved=t;return true}
-   delete u.tacticalWorld;delete u.tacticalDestination;delete u.slAutoReturn;clearManual(u);u.lane=target.lane;u.x=target.x;u.sub=0;u.subTarget=0;return false
- }
- return previousHandleUnit(u,dt,t)
-};
-
+/* Retorno automático usa o mesmo executor de navegação dos demais comandos. */
 function unitHit(world){
  let best=null,bestDistance=Infinity,bestScore=Infinity;
- for(const u of units){if(u.dead)continue;const p=map.unitPos(u),d=Math.hypot(p.x-world.x,p.y-world.y),legend=!!u.special?.legend,limit=legend?LEGEND_RADIUS:UNIT_RADIUS;if(d>limit)continue;const score=d-(legend&&d<=90?34:0);if(score<bestScore){best=u;bestDistance=d;bestScore=score}}
+ for(const u of units){if(u.dead||(u.side!==PLAYER&&window.SL_VISION&&!SL_VISION.isVisibleTo(PLAYER,u)))continue;const p=map.unitPos(u),d=Math.hypot(p.x-world.x,p.y-world.y),legend=!!u.special?.legend,limit=legend?LEGEND_RADIUS:UNIT_RADIUS;if(d>limit)continue;const score=d-(legend&&d<=90?34:0);if(score<bestScore){best=u;bestDistance=d;bestScore=score}}
  return best?{kind:'unit',object:best,distance:bestDistance}:null
 }
 function structureHit(world){
@@ -98,7 +89,7 @@ function ensureInspector(){
  if(inspector)return;inspector=document.createElement('section');inspector.id='battleInspector';inspector.className='battleInspector panel';inspector.hidden=true;inspector.innerHTML='<button class="inspectorClose" type="button" aria-label="Fechar">×</button><strong class="inspectorTitle"></strong><small class="inspectorSubtitle"></small><div class="inspectorStats"></div>';document.querySelector('#gameUI')?.appendChild(inspector);inspector.querySelector('.inspectorClose').onclick=()=>{selected=null;inspector.hidden=true}
 }
 function renderInspector(){
- ensureInspector();if(!selected||!inspector)return;if(selected.object?.dead){selected=null;inspector.hidden=true;return}inspector.hidden=false;inspector.querySelector('.inspectorTitle').textContent=titleFor(selected);inspector.querySelector('.inspectorSubtitle').textContent=subtitleFor(selected);const rows=selected.kind==='structure'?structureStats(selected.object):unitStats(selected.object);inspector.querySelector('.inspectorStats').innerHTML=rows.map(([k,v])=>`<span><small>${k}</small><b>${v}</b></span>`).join('')
+ ensureInspector();if(!selected||!inspector)return;if(selected.object?.dead||(selected.kind==='unit'&&selected.object.side!==PLAYER&&window.SL_VISION&&!SL_VISION.isVisibleTo(PLAYER,selected.object))){selected=null;inspector.hidden=true;return}inspector.hidden=false;inspector.querySelector('.inspectorTitle').textContent=titleFor(selected);inspector.querySelector('.inspectorSubtitle').textContent=subtitleFor(selected);const rows=selected.kind==='structure'?structureStats(selected.object):unitStats(selected.object);inspector.querySelector('.inspectorStats').innerHTML=rows.map(([k,v])=>`<span><small>${k}</small><b>${v}</b></span>`).join('')
 }
 function inspectTap(tap){const hit=inspectableAt(tap.world);if(hit){selected=hit;renderInspector();return hit}selected=null;if(inspector)inspector.hidden=true;return null}
 

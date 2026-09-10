@@ -11,9 +11,10 @@ function setTextIfChanged(node,text){
 }
 
 function compact(){
-  lanes.querySelectorAll('.laneControl').forEach((box,i)=>{
+  let laneIndex=0;
+  lanes.querySelectorAll('.laneControl').forEach(box=>{
     const strong=box.querySelector('strong');
-    setTextIfChanged(strong,laneNames[i]||('L'+(i+1)));
+    setTextIfChanged(strong,box.classList.contains('laneControlAll')?'TODAS':laneNames[laneIndex++]);
     box.querySelectorAll('button[data-v]').forEach(b=>{
       const txt=labels[b.dataset.v];
       if(txt)setTextIfChanged(b,txt);

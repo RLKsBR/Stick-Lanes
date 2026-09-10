@@ -6,7 +6,7 @@
 'use strict';
 (function boot(){
  const map=window.SL_MOBA_SQUARE_V2,buffs=window.SL_BUFF_SYSTEM,vision=window.SL_VISION,tactical=window.SL_TACTICAL_TARGETING;
- if(!map||!buffs?.zones||!vision?.walls||!tactical){setTimeout(boot,50);return}
+ if(!map||!buffs?.zones||!vision?.walls||!tactical){throw new Error('jungle-access-v1.js: missing dependency; check index.html load order')}
  if(window.SL_JUNGLE_ACCESS?.version>=1)return;
 
  const START=.055,SPLIT=.50,END=.945,INNER_A=.035,INNER_B=.965,STEPS=24;
@@ -73,10 +73,5 @@
 
  window.SL_JUNGLE_ACCESS={version:1,assignment:ASSIGN,get walls(){return vision.walls},health(){return{loaded:true,zones:buffs.zones.map(z=>({id:z.id,quadrant:z.quadrant,points:z.polygon.length})),walls:vision.walls.length,exactPointCapture:true}}};
 
- /* O pathfinder precisa nascer DEPOIS que as 44 paredes definitivas substituem
-    as paredes provisórias; assim o grafo de visibilidade é construído na
-    topologia real da partida. */
- if(!document.querySelector('script[data-sl-jungle-pathfinding]')){
-   const s=document.createElement('script');s.src='jungle-pathfinding-v2.js?v=20260904-a-star1';s.async=false;s.dataset.slJunglePathfinding='1';document.head.appendChild(s)
- }
+ // O pathfinder é carregado uma vez por index.html, após esta topologia.
 })();

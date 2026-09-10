@@ -1,0 +1,14 @@
+{
+  "name": "stick-lanes",
+  "private": true,
+  "scripts": {
+    "assets": "node tools/assets.cjs",
+    "check": "node tools/assets.cjs --check",
+    "test": "node tests/smoke-assisted.js && node tests/no-observer-loop.js && node tests/balance-survivability.js && node tests/vision-geometry.js",
+    "test:browser": "node tests/run-browser.mjs",
+    "serve": "node tools/serve.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.55.1"
+  }
+}

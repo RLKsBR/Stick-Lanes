@@ -37,8 +37,16 @@ function segHit(a,b,c,d){
  if(Math.abs(o3)<.01&&onSeg(c,d,a))return true;if(Math.abs(o4)<.01&&onSeg(c,d,b))return true;return false;
 }
 function segmentHitsWall(a,b,w,pad=0){
- if(pointInside(w,a,pad)||pointInside(w,b,pad))return true;
- const q=corners(w,pad);for(let i=0;i<4;i++)if(segHit(a,b,q[i],q[(i+1)%4]))return true;return false;
+ // Clip a segment against the wall's local rectangle. No corner arrays per ray.
+ const c=Math.cos(w.a),s=Math.sin(w.a),ax=a.x-w.x,ay=a.y-w.y,bx=b.x-w.x,by=b.y-w.y;
+ const x=ax*c+ay*s,y=-ax*s+ay*c,dx=(bx-ax)*c+(by-ay)*s,dy=-(bx-ax)*s+(by-ay)*c;
+ const hx=w.len/2+pad,hy=w.thickness/2+pad;
+ let near=0,far=1;
+ if(Math.abs(dx)<1e-12){if(Math.abs(x)>hx)return false}else{
+   const t1=(-hx-x)/dx,t2=(hx-x)/dx;near=Math.max(near,Math.min(t1,t2));far=Math.min(far,Math.max(t1,t2));if(near>far)return false;
+ }
+ if(Math.abs(dy)<1e-12)return Math.abs(y)<=hy;
+ const t1=(-hy-y)/dy,t2=(hy-y)/dy;near=Math.max(near,Math.min(t1,t2));far=Math.min(far,Math.max(t1,t2));return near<=far;
 }
 function blockingWall(a,b,pad=0){return WALLS.find(w=>segmentHitsWall(a,b,w,pad))||null}
 function blocked(a,b){return!!blockingWall(a,b,0)}
@@ -76,8 +84,8 @@ function visionSources(side){
  for(const s of structures){if(s.dead||s.side!==side)continue;src.push({p:map.structurePos(s),r:visionRadiusStructure(s)})}
  const bp=side===1?map.routePoint(1,.01):map.routePoint(1,.99);src.push({p:bp,r:1450});return src;
 }
-function isPointVisible(side,p){for(const src of visionSources(side)){if(Math.hypot(src.p.x-p.x,src.p.y-p.y)<=src.r&&!blocked(src.p,p))return true}return false}
-function isVisibleTo(side,u){if(!u||u.dead)return false;if(u.side===side)return true;const p=map.unitPos(u),v=isPointVisible(side,p);if(v)lastSeen[side]?.set(u.id,{t:simTime,x:p.x,y:p.y,lane:u.lane});return v}
+function isPointVisible(side,p,sources){if(window.SL_BUFF_SYSTEM?.isBlinded?.(side))return false;for(const src of sources||visionSources(side)){if(Math.hypot(src.p.x-p.x,src.p.y-p.y)<=src.r&&!blocked(src.p,p))return true}return false}
+function isVisibleTo(side,u,sources){if(!u||u.dead)return false;if(u.side===side)return true;const p=map.unitPos(u),v=isPointVisible(side,p,sources);if(v)lastSeen[side]?.set(u.id,{t:simTime,x:p.x,y:p.y,lane:u.lane});return v}
 function seenRecently(side,u,seconds=2.6){if(isVisibleTo(side,u))return true;const s=lastSeen[side]?.get(u?.id);return!!(s&&simTime-s.t<=seconds)}
 function visibleEnemies(side){return units.filter(u=>!u.dead&&u.side===-side&&isVisibleTo(side,u))}
 
@@ -129,16 +137,12 @@ function handleTacticalTravel(u,dt,t){
 function handleJungleHold(u,dt,t){
  if(!u?.special?.legend||!u.tacticalWorld||u.tacticalDestination||!u.manualBuff)return false;
  const api=window.SL_BUFF_SYSTEM,zone=api?.zones?.find(z=>z.id===u.manualBuff);if(!zone)return false;
- const enemy=units.find(v=>!v.dead&&v.side===-u.side&&v.special?.legend&&api.containsBuff(zone,map.unitPos(v)));if(!enemy)return true;
+ const enemy=units.find(v=>!v.dead&&v.side===-u.side&&v.special?.legend&&api.containsBuff(zone,map.unitPos(v))&&isVisibleTo(u.side,v));if(!enemy)return true;
  const a=u.tacticalWorld,b=map.unitPos(enemy),rs=map.routeLengths[1]/(BASE_X[-1]-BASE_X[1]),range=Math.max(32,u.range*PX*rs),distance=Math.hypot(b.x-a.x,b.y-a.y);
  if(distance>range||blocked(a,b)){moveWorld(u,b,dt,t,Math.max(12,range*.78));return true}
  if(t-u.lastAttack>=attackRate(u)){attack(u,enemy,t);u.lastAttack=t;u.attackCount++}return true;
 }
 const oldHandle=tactical.handleUnit;tactical.handleUnit=function(u,dt,t){if(handleTacticalTravel(u,dt,t))return true;if(handleJungleHold(u,dt,t))return true;return oldHandle(u,dt,t)};
 
-window.SL_VISION={version:3,walls:WALLS,blocked,blockingWall,pointInside,routeWaypoint,isPointVisible,isVisibleTo,seenRecently,visibleEnemies,visionRadiusUnit,visionRadiusStructure,structureAttackWorldRange,lastSeenInfo:(side,id)=>lastSeen[side]?.get(id)||null,health(){return{loaded:true,physical:true,walls:WALLS.length,structureVisionBeyondAttack:true,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
+window.SL_VISION={version:3,walls:WALLS,blocked,blockingWall,pointInside,routeWaypoint,isPointVisible,isVisibleTo,visionSources,reset(){lastSeen[1].clear();lastSeen[-1].clear()},seenRecently,visibleEnemies,visionRadiusUnit,visionRadiusStructure,structureAttackWorldRange,lastSeenInfo:(side,id)=>lastSeen[side]?.get(id)||null,health(){return{loaded:true,physical:true,walls:WALLS.length,structureVisionBeyondAttack:true,playerVisibleEnemies:visibleEnemies(1).length,aiVisibleEnemies:visibleEnemies(-1).length}}};
 })();
-
-/* Carrega o executor final depois que o árbitro estiver disponível. O próprio
-   módulo espera/reintenta até a cadeia de IA terminar de inicializar. */
-(function(){if(document.querySelector('script[data-sl-legend-authority]'))return;const s=document.createElement('script');s.src='legend-authority-lock-v1.js?v=20260903-single-authority1';s.async=false;s.dataset.slLegendAuthority='1';document.head.appendChild(s)})();

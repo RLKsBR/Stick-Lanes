@@ -14,6 +14,7 @@ async function runCase(name,viewport){
   });
   const page=await context.newPage();
   const pageErrors=[];
+  page.on('dialog',async dialog=>{pageErrors.push('Unexpected dialog: '+dialog.message());await dialog.dismiss()});
   page.on('pageerror',e=>pageErrors.push(String(e.stack||e.message||e)));
   page.on('console',msg=>{if(msg.type()==='error')pageErrors.push('console: '+msg.text())});
 
@@ -143,7 +144,9 @@ async function runCase(name,viewport){
   if(!targeting.towerTroop||!targeting.towerLegend||!targeting.jungleLegend||!targeting.jungleTroopUntouched||!targeting.legendTargetTroop||!targeting.legendTargetLegend||!targeting.enemyTroopVisible||!targeting.troopTargetTroop||!targeting.troopTargetLegend||!targeting.hiddenTroopBlocked||!targeting.blankTroop||!targeting.blankLegend||!targeting.jungleEnemyLegendOnly||!targeting.health?.directCommands||!targeting.health?.jungleLegendOnly)throw new Error(`${name}: controles diretos/visão inválidos ${JSON.stringify(targeting)}`);
 
   // 20x também precisa continuar responsivo; aqui já devem nascer ondas/unidades.
-  await page.click('#simSpeedControls button[data-speed="20"]',{timeout:3000});
+  // Input/compositor latency can exceed 3s in software-rendered Chromium.
+  // Keep the independent RAF heartbeat limit below at 700ms.
+  await page.click('#simSpeedControls button[data-speed="20"]',{timeout:10000});
   await page.waitForTimeout(1600);
   const state2=await page.evaluate(()=>({
     timer:document.querySelector('#matchTimer')?.textContent,

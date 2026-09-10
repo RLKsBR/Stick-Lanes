@@ -12,12 +12,12 @@ let activeMarker=null,quickBar=null;
 
 function playerLegends(){return units.filter(u=>!u.dead&&u.side===PLAYER&&!u.minion&&u.special?.legend)}
 function playerTroops(lane){return units.filter(u=>!u.dead&&u.side===PLAYER&&u.lane===lane&&!u.minion&&!u.special?.legend&&!u.tacticalWorld)}
-function enemyUnit(id,side=PLAYER){return units.find(u=>!u.dead&&u.side===-side&&u.id===id)||null}
+function enemyUnit(id,side=PLAYER){return units.find(u=>!u.dead&&u.side===-side&&u.id===id&&(!window.SL_VISION||SL_VISION.isVisibleTo(side,u)))||null}
 function targetUnit(target,side=PLAYER){return target?.kind==='unit'?enemyUnit(target.unitId,side):null}
 function anyTargetUnit(target){return target?.kind==='unit'?units.find(u=>!u.dead&&u.id===target.unitId)||null:null}
 function zoneAt(world){return map.buffZones?.find(z=>map.containsBuff?map.containsBuff(z,world):Math.hypot(z.x-world.x,z.y-world.y)<=z.r)||null}
 function targetWorld(target){
- if(target?.kind==='unit'){const u=anyTargetUnit(target);if(u)return map.unitPos(u)}
+ if(target?.kind==='unit'){const u=enemyUnit(target.unitId,PLAYER);return u?map.unitPos(u):null}
  if(target?.structure){const s=structures.find(x=>!x.dead&&x.id===target.structure.id);if(s)return map.structurePos(s)}
  return target?.world||null
 }

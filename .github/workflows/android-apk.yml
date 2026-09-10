@@ -10,6 +10,8 @@ on:
       - '*.css'
       - 'assets/**'
       - 'tests/**'
+      - 'tools/**'
+      - 'package*.json'
       - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
@@ -38,15 +40,12 @@ jobs:
 
       - name: Install Playwright
         run: |
-          npm install --no-save --no-package-lock playwright@1.55.0
+          npm ci
+          npm run check
           npx playwright install chromium
 
       - name: Run real Chromium assisted-mode tests
-        run: |
-          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/stick-lanes-http.log 2>&1 &
-          sleep 1
-          node tests/browser-assisted.mjs
-          node tests/ai-stability.mjs
+        run: npm run test:browser
 
       - name: Set up Java 17
         uses: actions/setup-java@v4

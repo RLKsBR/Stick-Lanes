@@ -1,6 +1,14 @@
 /* Stick Lanes — foco de batalha v1
    O mapa e o jogo ocupam praticamente toda a tela; controles viram uma faixa compacta superior. */
 
+html.sl-match-active #aiDiagnostics{
+  position:absolute;z-index:45;left:8px;bottom:8px;margin:0;
+  max-width:calc(100% - 16px);max-height:42dvh;overflow:auto;
+  background:rgba(9,13,16,.96);font-size:12px;
+}
+html.sl-match-active #aiDiagnostics[open]{width:600px;box-sizing:border-box}
+#aiDiagnostics summary{cursor:pointer;padding:4px}
+
 html.sl-match-active #gameUI{
   position:fixed;
   inset:0;

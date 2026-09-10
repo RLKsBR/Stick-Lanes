@@ -20,7 +20,7 @@ O menu principal possui somente:
 
 - Mundo horizontal de **22.500 unidades**.
 - **3 lanes**, cada uma com **5 sub-lanes mecânicas**, sem linhas artificiais dividindo o piso.
-- **4 torres principais + 6 torretas auxiliares por lane** e base com **6.000 de vida**.
+- **4 torres principais + 6 torretas auxiliares por lane** e base com **15.000 de vida**, iguais internamente e no HUD.
 - O alcance é recalculado pelo comprimento real de cada trecho, mas nunca pode reduzir o alcance-base de uma torre. Torre + par de torretas + torre cobrem continuamente todo intervalo defensivo no mapa atual, acima do piso de **75%**.
 - As torretas possuem 900 de vida, ficam emparelhadas no mesmo progresso da rota e deixam somente as sub-lanes externas como passagem.
 - Cada exército combina **2 facções** e usa **8 tropas compráveis**.
@@ -96,5 +96,24 @@ Arquivos principais:
 - `balance-import.js` — validação, importação e isolamento de bancos incompatíveis.
 
 ## Status
+
+### Validar a consolidação
+
+Requer Node.js 20 ou superior. Execute `npm ci`, `npx playwright install chromium`,
+`npm run check`, `npm test` e `npm run test:browser`. O último comando abre e
+encerra seu próprio servidor local; a porta 4173 precisa estar livre.
+`npm run serve` inicia uma prévia manual. Depois de alterar JS/CSS, execute
+`npm run assets` para atualizar os hashes de cache antes do commit.
+
+As regressões reais verificam 18 travessias de lane, os quatro buffs, retorno
+automático, rotas impossíveis, visão por lado, alvos ocultos, reset, vida da base,
+passo fixo, diagnóstico e inicialização incompleta. Os testes existentes cobrem
+portrait/landscape e uma janela de mais de oito minutos simulados de IA.
+O smoke em VM é histórico e não substitui os testes da página real. A CI roda
+também em PRs; o workflow Android reutiliza o mesmo runner e lockfile.
+
+Na **Simulação assistida**, abra **Decisões da IA** no canto inferior esquerdo
+para ver as escolhas e exportar diagnóstico. Consulte
+[`CONSOLIDATION.md`](CONSOLIDATION.md) para correções e limitações deste passe.
 
 Protótipo ativo. O visual procedural ainda é provisório. As ordens táticas do simulador são uma aproximação agregada, enquanto o jogo visível movimenta unidades individualmente. Os próximos passos são calibrar essas duas execuções com baterias atuais e substituir representações genéricas pelo pipeline visual 2,5D planejado para cada facção.
