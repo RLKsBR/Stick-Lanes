@@ -11,6 +11,47 @@ Este documento registra a autoridade real das camadas atuais. Ele não propõe u
 
 ## Ordem do jogo renderizado
 
+### Consolidação de 10/09/2026
+
+A ordem efetiva está em `index.html` e é validada por `npm run check`:
+mapa → targeting → buffs → visão/paredes → jungle definitiva → A* → percepção
+por lado → autoridade única → diagnóstico → draft. Pathfinder e autoridade
+não são mais injetados dinamicamente. Os quatro módulos de research/quarantine/
+bridge/stability substituídos foram retirados do carregamento, mas permanecem
+no repositório como histórico. `live-strategy-ai-v1.js` e macro ainda fornecem
+compatibilidade; a cadeia antiga de `runSideAI` não é chamada pela autoridade.
+
+`SL_AI_SIDE_VISION.capture(side)` calcula força e contagem de ondas a partir da
+mesma visão do time, reutilizando fontes por fotografia. Não redefine funções
+globais durante a decisão. Estruturas e vida das bases continuam sendo estado
+público do modelo atual; isso não implementa memória estratégica completa.
+
+`SL_JUNGLE_PATHFINDING` é o executor de travessias e retorno automático. Falhas
+de A* retornam rota vazia, com nova tentativa limitada; pontos intermediários
+são atingidos sem cortar quinas. A autoridade acompanha distância restante e
+invalida o caminho após 3,2 segundos sem progresso, descontando stun. Clique
+em alvo que morre/some da visão encerra a perseguição e retorna à lane.
+
+`BASE_HP=15000` usa a mesma unidade no combate e no HUD. O antigo divisor 2,5
+de dano foi removido, preservando a durabilidade efetiva. Torres e torretas
+mantêm seus multiplicadores. O loop usa passos fixos de 40 ms em todas as
+velocidades; tempo visual/HUD continua em relógio real. Isso não constitui
+replay determinístico: RNG, entrada e configurações ainda não são gravados.
+
+`SL_AI_FUNCTIONAL_CONTROLLER.trace()` entrega até 240 decisões/recuperações;
+`inspect(side)` entrega percepção filtrada. O painel de diagnóstico aparece
+na simulação assistida e exporta plano, pontuações, motivos, navegação e saúde.
+Reset limpa o histórico e a memória de visão para evitar IDs de outra partida.
+
+`boot-health.js` registra falhas de carga e verifica APIs essenciais antes de
+liberar o menu. `npm run assets` grava hashes de conteúdo normalizados em LF
+nos recursos JS/CSS das duas páginas; `npm run check` verifica hashes, sintaxe,
+duplicatas e ordem. Não existe bundler ainda. Novos módulos devem entrar
+explicitamente no HTML, sem novos carregadores por polling.
+
+Os detalhes históricos abaixo descrevem responsabilidades anteriores; para a
+autoridade atual, vale esta seção e a ordem validada de `index.html`.
+
 1. `factions-v3.js` cria facções, tropas, minions e regras de combate.
 2. `minion-speed-v1.js` uniformiza a velocidade dos minions em 5,4.
 3. `balance-patch-v3-3.js` aplica o balanceamento numérico vigente às tropas.

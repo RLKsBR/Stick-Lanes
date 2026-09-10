@@ -21,7 +21,9 @@ const towerTypes=[
  COMBAT.tower.advanced
 ];
 const AUX_TURRET={label:'Torreta',hp:900,atk:10,range:4,rate:1.15,visualTier:0,auxiliary:true};
-const BASE_HP=6000,WAVE_INTERVAL=22;
+const BASE_HP=15000,WAVE_INTERVAL=22;
+const SIM_STEP=.04;
+let simulationAccumulator=0;
 const MINION_WAVE_FORMATION=[['tank',0],['fighter',-1],['fighter',1],['ranged',-2],['ranged',0],['ranged',2]];
 let units=[],structures=[],effects=[],gold=500,enemyGold=500,playerBase=BASE_HP,enemyBase=BASE_HP,
     selectedLane=1,last=performance.now(),running=false,income=0,cameraX=0,matchTime=0,simTime=0,timeScale=1,waveClock=0,waveIndex=0;
@@ -210,6 +212,7 @@ canvas.addEventListener('pointerup',e=>{
 });
 
 function reset(){
+ simulationAccumulator=0;window.SL_VISION?.reset?.();
  units=[];effects=[];gold=enemyGold=500;playerBase=enemyBase=BASE_HP;income=0;matchTime=0;simTime=0;timeScale=1;waveClock=0;waveIndex=0;unitSeq=0;setCamera(0);
  Object.keys(spawnCd).forEach(k=>delete spawnCd[k]);
  for(const side of [1,-1]){orders[side]=['advance','advance','advance'];aiSpawnCd[side]={};aiUse[side]={};aiNextThink[side]=0;spawnStrategyState[side]={total:0,counts:[0,0,0]}}
@@ -341,12 +344,18 @@ function simulationStep(dt){
  while(waveClock>=WAVE_INTERVAL){waveClock-=WAVE_INTERVAL;spawnWave(1);spawnWave(-1);waveIndex++}
  rebuildUnitIndex();if(gameMode==='robot')runSideAI(1,simTime);runSideAI(-1,simTime);update(dt,simTime);updateTowers(simTime)
 }
+function advanceSimulation(realDt,scale=timeScale){
+ simulationAccumulator+=Math.max(0,Math.min(.04,realDt))*scale;
+ let steps=0;
+ while(simulationAccumulator+1e-9>=SIM_STEP&&steps<60&&playerBase>0&&enemyBase>0){
+   simulationStep(SIM_STEP);simulationAccumulator=Math.max(0,simulationAccumulator-SIM_STEP);steps++
+ }
+ return steps;
+}
 function loop(now){
  if(!running)return;
- let realDt=Math.min(.04,(now-last)/1000),remaining=realDt*timeScale,steps=0,maxStep=timeScale>=10?.08:.04;last=now;
- while(remaining>.00001&&steps<60&&playerBase>0&&enemyBase>0){
-   let dt=Math.min(maxStep,remaining);simulationStep(dt);remaining-=dt;steps++
- }
+ let realDt=Math.min(.04,(now-last)/1000);last=now;
+ advanceSimulation(realDt);
  draw(simTime);hud(simTime);
  if(playerBase<=0||enemyBase<=0){running=false;setTimeout(()=>alert(playerBase>0?`Vitória! ${timeText(matchTime)}`:`Derrota! ${timeText(matchTime)}`),50);return}
  requestAnimationFrame(loop)

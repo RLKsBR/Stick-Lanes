@@ -32,7 +32,7 @@ const result=await page.evaluate(()=>{
   running=false;
   playerBase=1e9;enemyBase=1e9;
   const api=SL_AI_FUNCTIONAL_CONTROLLER;
-  const beforeQ=SL_AI_LEGACY_QUARANTINE?.health?.().passes??0;
+  const beforeQ=window.SL_AI_LEGACY_QUARANTINE?.health?.().passes??0;
   const orange=units.find(u=>!u.dead&&u.side===1&&u.special?.legend);
   if(!orange)throw new Error('orange legend missing');
   orange.maxHp=Math.max(orange.maxHp,1e7);orange.hp=orange.maxHp;orange.def=Math.max(orange.def,1e6);
@@ -64,7 +64,7 @@ const result=await page.evaluate(()=>{
       for(const u of units)if(!u.dead&&u.special?.legend&&(u.side===-1||gameMode==='robot'&&u.side===1)&&u.manualHold)staleHolds++;
     }
   }
-  const health=api.health(),afterQ=SL_AI_LEGACY_QUARANTINE?.health?.().passes??0;
+  const health=api.health(),afterQ=window.SL_AI_LEGACY_QUARANTINE?.health?.().passes??0;
   const honestVision=SL_AI_SIDE_VISION?.health?.()||null;
   return{beforeQ,afterQ,afterArrival,holdSeenAfterArrival,badOrders,unplanned,staleHolds,samples,health,honestVision,simTime,orders:{orange:[...orders[1]],red:[...orders[-1]]},arbiter:SL_LEGEND_INTENT_ARBITER?.get?.(1)??null}
 });

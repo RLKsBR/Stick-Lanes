@@ -6,7 +6,7 @@
 'use strict';
 (function boot(){
  const map=window.SL_MOBA_SQUARE_V2,vision=window.SL_VISION,tt=window.SL_TACTICAL_TARGETING;
- if(!map||!vision?.walls||!vision.blockingWall||!vision.pointInside||!tt?.handleUnit){setTimeout(boot,50);return}
+ if(!map||!vision?.walls||!vision.blockingWall||!vision.pointInside||!tt?.handleUnit){throw new Error('jungle-pathfinding-v2.js: missing dependency; check index.html load order')}
  if(window.SL_JUNGLE_PATHFINDING?.version>=2)return;
 
  const CLEAR=42,NODE_CLEAR=76,ARRIVE=16,REPLAN_UNIT=.55;
@@ -68,20 +68,27 @@
      if(cur===S){for(const[e,c]of startLinks)relax(S,e,c);if(lineClear(start,goal))relax(S,G,distance(start,goal));continue}
      for(const[e,c]of edges[cur])relax(cur,e,c);if(Number.isFinite(goalCost[cur]))relax(cur,G,goalCost[cur])
    }
-   if(prev[G]===-1){failedPlans++;const greedy=vision.routeWaypoint(start,goal,CLEAR);return[greedy,goal]}
+   // An unreachable route is a failure, never permission to cross a wall.
+   if(prev[G]===-1){failedPlans++;return[]}
    const rev=[];let k=G;while(k!==S&&k!==-1){rev.push(k===G?goal:nodes[k]);k=prev[k]}
    rev.reverse();return simplify(start,rev)
  }
  function goalFor(u,d){
-   if(d?.kind==='unit'){const v=units.find(x=>!x.dead&&x.id===d.unitId&&x.side===-u.side);return v?map.unitPos(v):null}
+   if(d?.kind==='unit'){const v=units.find(x=>!x.dead&&x.id===d.unitId&&x.side===-u.side);return v&&vision.isVisibleTo(u.side,v)?map.unitPos(v):null}
    return d?.world?{x:d.world.x,y:d.world.y}:null
  }
  function speed(u,t){const rs=map.routeLengths[1]/(BASE_X[-1]-BASE_X[1]),bonus=window.SL_BUFF_SYSTEM?.moveBonus?.(u.side,t)||0;return Math.max(55,u.speed*MOVE_SCALE*(window.SL_MOVEMENT_V6?.multiplier||1)*rs)*(1+bonus)}
  function resetPath(u){delete u.slWallPath;delete u.slWallPathIndex;delete u.slWallPathGoal;delete u.slWallPathAt;delete u.slWallPathSig}
+ function remainingDistance(u){
+   if(!u.tacticalWorld)return 0;if(!u.slWallPath?.length)return Infinity;
+   let p=u.tacticalWorld,total=0;for(let i=u.slWallPathIndex||0;i<u.slWallPath.length;i++){total+=distance(p,u.slWallPath[i]);p=u.slWallPath[i]}return total;
+ }
  function needsPlan(u,goal,d,t){
-   if(!u.slWallPath?.length||u.slWallPathIndex>=u.slWallPath.length||u.slWallPathSig!==signature)return true;
+   if(u.slWallPathSig!==signature)return true;
+   if(!u.slWallPath?.length)return t-(u.slWallPathAt??-99)>=1;
+   if(u.slWallPathIndex>=u.slWallPath.length)return true;
    const old=u.slWallPathGoal;if(!old||distance(old,goal)>90)return true;
-   if(d.kind==='unit'&&t-(u.slWallPathAt||-99)>REPLAN_UNIT&&distance(old,goal)>36)return true;
+   if(d.kind==='unit'&&t-(u.slWallPathAt??-99)>REPLAN_UNIT&&distance(old,goal)>36)return true;
    const wp=u.slWallPath[u.slWallPathIndex];return!wp||!lineClear(u.tacticalWorld,wp)
  }
  function ensurePath(u,goal,d,t){
@@ -89,11 +96,17 @@
    if(u.slWallPath)replans++;u.slWallPath=planRoute(u.tacticalWorld,goal);u.slWallPathIndex=0;u.slWallPathGoal={...goal};u.slWallPathAt=t;u.slWallPathSig=signature
  }
  function movePath(u,goal,d,dt,t,stop=ARRIVE){
-   ensurePath(u,goal,d,t);let guard=0;
-   while(u.slWallPathIndex<u.slWallPath.length&&guard++<4){
+   ensurePath(u,goal,d,t);let budget=speed(u,t)*dt;
+   if(!u.slWallPath?.length)return false;
+   while(u.slWallPathIndex<u.slWallPath.length){
      const wp=u.slWallPath[u.slWallPathIndex],dx=wp.x-u.tacticalWorld.x,dy=wp.y-u.tacticalWorld.y,dd=Math.hypot(dx,dy);
-     if(dd<=stop){u.slWallPathIndex++;continue}
-     const step=Math.min(dd,speed(u,t)*dt);if(step>0){u.tacticalWorld.x+=dx/dd*step;u.tacticalWorld.y+=dy/dd*step;u.tacticalWorld.a=Math.atan2(dy,dx);u.lastMoved=t}return false
+     // Reach each corner exactly; attack range is not a waypoint tolerance.
+     if(dd<.001){u.slWallPathIndex++;continue}
+     if(!lineClear(u.tacticalWorld,wp)){return false}
+     const step=Math.min(dd,budget);if(step<=0)return false;
+     u.tacticalWorld.x+=dx/dd*step;u.tacticalWorld.y+=dy/dd*step;u.tacticalWorld.a=Math.atan2(dy,dx);u.lastMoved=t;budget-=step;
+     if(step<dd)return false;
+     u.slWallPathIndex++;
    }
    return distance(u.tacticalWorld,pushOutside(goal))<=stop*1.6
  }
@@ -101,7 +114,17 @@
  const oldHandle=tt.handleUnit.bind(tt);
  tt.handleUnit=function(u,dt,t){
    const d=u?.tacticalDestination;if(!u?.special?.legend||!u.tacticalWorld||!d)return oldHandle(u,dt,t);
-   const goal=goalFor(u,d);if(!goal){resetPath(u);return oldHandle(u,dt,t)}
+   const goal=goalFor(u,d);if(!goal){
+     resetPath(u);
+     if(d.kind==='unit'){
+       // Keep the last known destination; never follow an unseen unit's live position.
+       const route=map.nearestRoutePoint(u.tacticalWorld),p=map.routePoint(route.lane,route.t);
+       delete u.manualUnitTargetId;
+       u.tacticalDestination={kind:'point',lane:route.lane,t:route.t,x:BASE_X[1]+route.t*(BASE_X[-1]-BASE_X[1]),world:{x:p.x,y:p.y},slNoHold:true};
+       return true;
+     }
+     return oldHandle(u,dt,t)
+   }
    if(d.kind==='unit'){
      const rs=map.routeLengths[1]/(BASE_X[-1]-BASE_X[1]),range=Math.max(30,u.range*PX*rs),dist=distance(u.tacticalWorld,goal);
      if(dist<=range&&!vision.blocked(u.tacticalWorld,goal)){resetPath(u);return oldHandle(u,dt,t)}
@@ -114,6 +137,6 @@
    return true
  };
 
- window.SL_JUNGLE_PATHFINDING={version:2,planRoute,clear:lineClear,rebuild:rebuildGraph,health(){return{loaded:true,version:2,walls:vision.walls.length,nodes:nodes.length,graphBuilds,plans,failedPlans,replans}}};
+ window.SL_JUNGLE_PATHFINDING={version:2,planRoute,clear:lineClear,rebuild:rebuildGraph,resetPath,remainingDistance,health(){return{loaded:true,version:2,walls:vision.walls.length,nodes:nodes.length,graphBuilds,plans,failedPlans,replans}}};
  rebuildGraph();
 })();
